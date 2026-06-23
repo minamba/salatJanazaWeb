@@ -1,0 +1,795 @@
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee } from '../lib/actions/mosqueeActions';
+import { fetchPrieres, deletePriere, updatePriere } from '../lib/actions/priereJanazaActions';
+import {
+  fetchUtilisateurs,
+  createUtilisateur,
+  updateUtilisateur,
+  deleteUtilisateur,
+} from '../lib/actions/utilisateurActions';
+
+// ─── Modal shell ─────────────────────────────────────────────────────────────
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Search bar ───────────────────────────────────────────────────────────────
+function SearchBar({ value, onChange, placeholder }) {
+  return (
+    <div className="admin-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      {value && (
+        <button className="admin-search-clear" onClick={() => onChange('')} aria-label="Effacer">✕</button>
+      )}
+    </div>
+  );
+}
+
+// ─── Nominatim geocoder ───────────────────────────────────────────────────────
+async function geocodeAdresse(adresse) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse)}&format=json&limit=1`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+  const data = await res.json();
+  if (!data.length) throw new Error('Adresse introuvable. Précisez la ville ou le pays.');
+  return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+}
+
+function normalize(str) {
+  return (str ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// ─── Datetime helpers ─────────────────────────────────────────────────────────
+function toLocalDatetimeInput(utcStr) {
+  const d = new Date(utcStr);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+}
+
+function toUTCISOString(localStr) {
+  return new Date(localStr).toISOString();
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+export default function AdminPage() {
+  const dispatch = useDispatch();
+  const { list: mosquees, loading: mLoading } = useSelector((s) => s.mosquee);
+  const { list: prieres, loading: pLoading, saving: pSaving } = useSelector((s) => s.priereJanaza);
+  const { list: utilisateurs, loading: uLoading, saving: uSaving, saveError: uSaveError } = useSelector((s) => s.utilisateur);
+
+  const [tab, setTab] = useState('prieres');
+
+  // ── Search states ────────────────────────────────────────────────────────────
+  const [searchPriereText, setSearchPriereText] = useState('');
+  const [searchPriereMosquee, setSearchPriereMosquee] = useState('');
+  const [searchPriereDate, setSearchPriereDate] = useState('');
+  const [searchMosquee, setSearchMosquee] = useState('');
+  const [searchUser, setSearchUser] = useState('');
+
+  // ── Mosque form ─────────────────────────────────────────────────────────────
+  const [mosqueeForm, setMosqueeForm] = useState({ nom: '', adresse: '' });
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState(null);
+
+  // ── Mosque edit modal ────────────────────────────────────────────────────────
+  const [editMosquee, setEditMosquee] = useState(null);
+  const [editMosqueeForm, setEditMosqueeForm] = useState({ nom: '', adresse: '', latitude: '', longitude: '' });
+  const [editMosqueeGeoLoading, setEditMosqueeGeoLoading] = useState(false);
+  const [editMosqueeGeoError, setEditMosqueeGeoError] = useState(null);
+
+  // ── Prayer edit modal ────────────────────────────────────────────────────────
+  const [editPriere, setEditPriere] = useState(null);
+  const [priereForm, setPriereForm] = useState({});
+
+  // ── User create/edit modals ──────────────────────────────────────────────────
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [createUserForm, setCreateUserForm] = useState({ email: '', password: '', prenom: '', nom: '', role: 'User', telephone: '' });
+  const [editUserForm, setEditUserForm] = useState({});
+
+  useEffect(() => {
+    dispatch(fetchMosquees());
+    dispatch(fetchPrieres());
+    dispatch(fetchUtilisateurs());
+  }, [dispatch]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const getDeclarantName = useCallback((utilisateurId) => {
+    if (!utilisateurId) return '—';
+    const u = utilisateurs.find((u) => u.id === utilisateurId);
+    if (!u) return `#${utilisateurId}`;
+    return `${u.prenom ?? ''} ${u.nom ?? ''}`.trim() || `#${utilisateurId}`;
+  }, [utilisateurs]);
+
+  const fmtDate = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+
+  // ── Filtered lists ───────────────────────────────────────────────────────────
+  const filteredPrieres = useMemo(() => {
+    return prieres.filter((p) => {
+      if (searchPriereText) {
+        const q = normalize(searchPriereText);
+        const defunt = normalize(p.estAnonyme ? 'anonyme' : p.nomDefunt);
+        const declarant = normalize(getDeclarantName(p.utilisateurId));
+        if (!defunt.includes(q) && !declarant.includes(q)) return false;
+      }
+      if (searchPriereMosquee) {
+        if (!normalize(p.mosqueeNom).includes(normalize(searchPriereMosquee))) return false;
+      }
+      if (searchPriereDate) {
+        const priereDay = p.dateHeurePriere ? p.dateHeurePriere.substring(0, 10) : '';
+        if (priereDay !== searchPriereDate) return false;
+      }
+      return true;
+    });
+  }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, getDeclarantName]);
+
+  const filteredMosquees = useMemo(() => {
+    if (!searchMosquee) return mosquees;
+    const q = normalize(searchMosquee);
+    return mosquees.filter((m) =>
+      normalize(m.nom).includes(q) || normalize(m.adresse).includes(q)
+    );
+  }, [mosquees, searchMosquee]);
+
+  const filteredUsers = useMemo(() => {
+    if (!searchUser) return utilisateurs;
+    const q = normalize(searchUser);
+    return utilisateurs.filter((u) =>
+      normalize(u.prenom).includes(q) ||
+      normalize(u.nom).includes(q) ||
+      normalize(u.email).includes(q)
+    );
+  }, [utilisateurs, searchUser]);
+
+  // ── Mosque handlers ──────────────────────────────────────────────────────────
+  const handleAddMosquee = async (e) => {
+    e.preventDefault();
+    setGeoError(null);
+    setGeoLoading(true);
+    try {
+      const { latitude, longitude } = await geocodeAdresse(mosqueeForm.adresse);
+      dispatch(createMosquee({ nom: mosqueeForm.nom, adresse: mosqueeForm.adresse, latitude, longitude }));
+      setMosqueeForm({ nom: '', adresse: '' });
+    } catch (err) {
+      setGeoError(err.message);
+    } finally {
+      setGeoLoading(false);
+    }
+  };
+
+  // ── Mosque edit handlers ─────────────────────────────────────────────────────
+  const openEditMosquee = (m) => {
+    setEditMosquee(m);
+    setEditMosqueeForm({ nom: m.nom ?? '', adresse: m.adresse ?? '', latitude: String(m.latitude ?? ''), longitude: String(m.longitude ?? '') });
+    setEditMosqueeGeoError(null);
+  };
+
+  const handleRegeocodeAdresse = async () => {
+    setEditMosqueeGeoError(null);
+    setEditMosqueeGeoLoading(true);
+    try {
+      const { latitude, longitude } = await geocodeAdresse(editMosqueeForm.adresse);
+      setEditMosqueeForm((f) => ({ ...f, latitude: String(latitude), longitude: String(longitude) }));
+    } catch (err) {
+      setEditMosqueeGeoError(err.message);
+    } finally {
+      setEditMosqueeGeoLoading(false);
+    }
+  };
+
+  const handleSaveMosquee = (e) => {
+    e.preventDefault();
+    dispatch(updateMosquee(editMosquee.id, {
+      nom: editMosqueeForm.nom,
+      adresse: editMosqueeForm.adresse || null,
+      latitude: parseFloat(editMosqueeForm.latitude),
+      longitude: parseFloat(editMosqueeForm.longitude),
+    }));
+    setEditMosquee(null);
+  };
+
+  // ── Prayer handlers ──────────────────────────────────────────────────────────
+  const normalizeGenre = (g) => {
+    if (!g) return '';
+    const lower = g.toLowerCase();
+    if (lower === 'homme' || lower === 'femme' || lower === 'enfant') return lower;
+    return g;
+  };
+
+  const openEditPriere = (p) => {
+    setEditPriere(p);
+    setPriereForm({
+      nomDefunt: p.nomDefunt ?? '',
+      estAnonyme: p.estAnonyme,
+      genre: normalizeGenre(p.genre),
+      dateHeurePriere: p.dateHeurePriere ? toLocalDatetimeInput(p.dateHeurePriere) : '',
+      commentaire: p.commentaire ?? '',
+      paysEnterrement: p.paysEnterrement ?? '',
+      villeEnterrement: p.villeEnterrement ?? '',
+    });
+  };
+
+  const handleSavePriere = (e) => {
+    e.preventDefault();
+    dispatch(updatePriere(editPriere.id, {
+      nomDefunt: priereForm.estAnonyme ? null : (priereForm.nomDefunt || null),
+      estAnonyme: priereForm.estAnonyme,
+      genre: priereForm.genre || null,
+      dateHeurePriere: priereForm.dateHeurePriere ? toUTCISOString(priereForm.dateHeurePriere) : priereForm.dateHeurePriere,
+      commentaire: priereForm.commentaire || null,
+      paysEnterrement: priereForm.paysEnterrement || null,
+      villeEnterrement: priereForm.villeEnterrement || null,
+    }));
+    setEditPriere(null);
+  };
+
+  // ── User handlers ─────────────────────────────────────────────────────────────
+  const handleCreateUser = (e) => {
+    e.preventDefault();
+    dispatch(createUtilisateur({
+      email: createUserForm.email,
+      password: createUserForm.password,
+      prenom: createUserForm.prenom,
+      nom: createUserForm.nom,
+      role: createUserForm.role,
+      telephone: createUserForm.telephone || null,
+    }));
+    setShowCreateUser(false);
+    setCreateUserForm({ email: '', password: '', prenom: '', nom: '', role: 'User', telephone: '' });
+  };
+
+  const openEditUser = (u) => {
+    setEditUser(u);
+    setEditUserForm({ prenom: u.prenom ?? '', nom: u.nom ?? '', telephone: u.telephone ?? '' });
+  };
+
+  const handleSaveUser = (e) => {
+    e.preventDefault();
+    dispatch(updateUtilisateur(editUser.id, {
+      prenom: editUserForm.prenom || null,
+      nom: editUserForm.nom || null,
+      telephone: editUserForm.telephone || null,
+    }));
+    setEditUser(null);
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="container">
+          <h1>Administration</h1>
+        </div>
+      </div>
+
+      <div className="container" style={{ padding: '2rem 1rem' }}>
+        {/* Tabs */}
+        <div className="tab-buttons">
+          <button className={`btn ${tab === 'prieres' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('prieres')}>
+            Prières ({prieres.length})
+          </button>
+          <button className={`btn ${tab === 'mosquees' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('mosquees')}>
+            Mosquées ({mosquees.length})
+          </button>
+          <button className={`btn ${tab === 'utilisateurs' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('utilisateurs')}>
+            Utilisateurs ({utilisateurs.length})
+          </button>
+        </div>
+
+        {/* ── PRIERES ── */}
+        {tab === 'prieres' && (
+          <div className="admin-table-wrap">
+            <h2>Gestion des prières</h2>
+
+            <div className="admin-search-bar">
+              <SearchBar
+                value={searchPriereText}
+                onChange={setSearchPriereText}
+                placeholder="Nom du défunt ou déclarant…"
+              />
+              <SearchBar
+                value={searchPriereMosquee}
+                onChange={setSearchPriereMosquee}
+                placeholder="Mosquée…"
+              />
+              <div className="admin-search admin-search-date">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <input
+                  type="date"
+                  value={searchPriereDate}
+                  onChange={(e) => setSearchPriereDate(e.target.value)}
+                />
+                {searchPriereDate && (
+                  <button className="admin-search-clear" onClick={() => setSearchPriereDate('')} aria-label="Effacer">✕</button>
+                )}
+              </div>
+            </div>
+
+            <p className="admin-count">
+              {filteredPrieres.length} résultat{filteredPrieres.length !== 1 ? 's' : ''}
+              {filteredPrieres.length !== prieres.length && ` sur ${prieres.length}`}
+            </p>
+
+            {pLoading && <p className="text-muted">Chargement...</p>}
+            <div className="admin-table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Défunt</th>
+                    <th>Genre</th>
+                    <th>Mosquée</th>
+                    <th>Enterrement</th>
+                    <th>Date prière</th>
+                    <th>Déclarant</th>
+                    <th>Créé le</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPrieres.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.id}</td>
+                      <td>{p.estAnonyme ? <em>Anonyme</em> : (p.nomDefunt ?? '—')}</td>
+                      <td>{p.genre ?? '—'}</td>
+                      <td>{p.mosqueeNom ?? '—'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {p.villeEnterrement || p.paysEnterrement
+                          ? [p.villeEnterrement, p.paysEnterrement].filter(Boolean).join(', ')
+                          : '—'}
+                      </td>
+                      <td>{fmtDate(p.dateHeurePriere)}</td>
+                      <td>{getDeclarantName(p.utilisateurId)}</td>
+                      <td>{fmtDateOnly(p.dateCreation)}</td>
+                      <td><span className={`badge badge-${p.statut?.toLowerCase()}`}>{p.statut}</span></td>
+                      <td className="admin-actions">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEditPriere(p)}>Modifier</button>
+                        <button
+                          className="btn btn-danger-sm"
+                          onClick={() => window.confirm('Supprimer cette prière ?') && dispatch(deletePriere(p.id))}
+                        >
+                          Supprimer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredPrieres.length === 0 && (
+                    <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── MOSQUEES ── */}
+        {tab === 'mosquees' && (
+          <div>
+            <h2>Ajouter une mosquée</h2>
+            <form onSubmit={handleAddMosquee} className="auth-form" style={{ maxWidth: '500px', marginBottom: '2rem' }}>
+              <div className="form-group">
+                <label>Nom *</label>
+                <input
+                  type="text"
+                  value={mosqueeForm.nom}
+                  onChange={(e) => setMosqueeForm((f) => ({ ...f, nom: e.target.value }))}
+                  placeholder="Grande Mosquée de Paris"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Adresse *</label>
+                <input
+                  type="text"
+                  value={mosqueeForm.adresse}
+                  onChange={(e) => setMosqueeForm((f) => ({ ...f, adresse: e.target.value }))}
+                  placeholder="2 bis place du Puits de l'Ermite, 75005 Paris"
+                  required
+                />
+              </div>
+              {geoError && <div className="alert alert-error">{geoError}</div>}
+              <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: '-0.5rem' }}>
+                Les coordonnées GPS seront calculées automatiquement depuis l'adresse.
+              </p>
+              <button type="submit" className="btn btn-primary" disabled={geoLoading}>
+                {geoLoading ? 'Géocodage en cours...' : 'Ajouter'}
+              </button>
+            </form>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ margin: 0 }}>Mosquées enregistrées</h2>
+            </div>
+
+            <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
+              <SearchBar
+                value={searchMosquee}
+                onChange={setSearchMosquee}
+                placeholder="Rechercher par nom ou adresse…"
+              />
+            </div>
+
+            <p className="admin-count">
+              {filteredMosquees.length} résultat{filteredMosquees.length !== 1 ? 's' : ''}
+              {filteredMosquees.length !== mosquees.length && ` sur ${mosquees.length}`}
+            </p>
+
+            {mLoading && <p className="text-muted">Chargement...</p>}
+            <div className="admin-table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Adresse</th>
+                    <th>Lat</th>
+                    <th>Lng</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMosquees.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.id}</td>
+                      <td>{m.nom}</td>
+                      <td>{m.adresse ?? '—'}</td>
+                      <td>{m.latitude?.toFixed(4)}</td>
+                      <td>{m.longitude?.toFixed(4)}</td>
+                      <td className="admin-actions">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEditMosquee(m)}>Modifier</button>
+                        <button
+                          className="btn btn-danger-sm"
+                          onClick={() => window.confirm('Supprimer cette mosquée ?') && dispatch(deleteMosquee(m.id))}
+                        >
+                          Supprimer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredMosquees.length === 0 && (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── UTILISATEURS ── */}
+        {tab === 'utilisateurs' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Gestion des utilisateurs</h2>
+              <button className="btn btn-primary" onClick={() => setShowCreateUser(true)}>
+                + Ajouter un utilisateur
+              </button>
+            </div>
+
+            <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
+              <SearchBar
+                value={searchUser}
+                onChange={setSearchUser}
+                placeholder="Rechercher par prénom, nom ou email…"
+              />
+            </div>
+
+            <p className="admin-count">
+              {filteredUsers.length} résultat{filteredUsers.length !== 1 ? 's' : ''}
+              {filteredUsers.length !== utilisateurs.length && ` sur ${utilisateurs.length}`}
+            </p>
+
+            {uLoading && <p className="text-muted">Chargement...</p>}
+            {uSaveError && <div className="alert alert-error">{uSaveError}</div>}
+            <div className="admin-table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Prénom</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Inscrit le</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.id}</td>
+                      <td>{u.prenom ?? '—'}</td>
+                      <td>{u.nom ?? '—'}</td>
+                      <td>{u.email}</td>
+                      <td>{u.telephone || '—'}</td>
+                      <td>{fmtDateOnly(u.dateInscription)}</td>
+                      <td className="admin-actions">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEditUser(u)}>Modifier</button>
+                        <button
+                          className="btn btn-danger-sm"
+                          onClick={() => window.confirm(`Supprimer ${u.prenom} ${u.nom} ? Cette action est irréversible.`) && dispatch(deleteUtilisateur(u.id))}
+                        >
+                          Supprimer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── MODAL: Edit Mosquée ── */}
+      {editMosquee && (
+        <Modal title={`Modifier la mosquée #${editMosquee.id}`} onClose={() => setEditMosquee(null)}>
+          <form className="auth-form" onSubmit={handleSaveMosquee}>
+            <div className="form-group">
+              <label>Nom *</label>
+              <input
+                type="text"
+                value={editMosqueeForm.nom}
+                onChange={(e) => setEditMosqueeForm((f) => ({ ...f, nom: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Adresse</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={editMosqueeForm.adresse}
+                  onChange={(e) => setEditMosqueeForm((f) => ({ ...f, adresse: e.target.value }))}
+                  placeholder="Laisser vide pour garder les coordonnées actuelles"
+                  style={{ flex: 1 }}
+                />
+                <button type="button" className="btn btn-outline" onClick={handleRegeocodeAdresse} disabled={editMosqueeGeoLoading || !editMosqueeForm.adresse}>
+                  {editMosqueeGeoLoading ? '...' : 'Géocoder'}
+                </button>
+              </div>
+              {editMosqueeGeoError && <div className="alert alert-error" style={{ marginTop: '0.5rem' }}>{editMosqueeGeoError}</div>}
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Latitude *</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editMosqueeForm.latitude}
+                  onChange={(e) => setEditMosqueeForm((f) => ({ ...f, latitude: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Longitude *</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editMosqueeForm.longitude}
+                  onChange={(e) => setEditMosqueeForm((f) => ({ ...f, longitude: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setEditMosquee(null)}>Annuler</button>
+              <button type="submit" className="btn btn-primary">Enregistrer</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── MODAL: Edit Prière ── */}
+      {editPriere && (
+        <Modal title={`Modifier la prière #${editPriere.id}`} onClose={() => setEditPriere(null)}>
+          <form className="auth-form" onSubmit={handleSavePriere}>
+            <div className="form-group form-checkbox">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={priereForm.estAnonyme}
+                  onChange={(e) => setPriereForm((f) => ({ ...f, estAnonyme: e.target.checked }))}
+                />
+                Défunt(e) anonyme
+              </label>
+            </div>
+            {!priereForm.estAnonyme && (
+              <div className="form-group">
+                <label>Nom du défunt</label>
+                <input
+                  type="text"
+                  value={priereForm.nomDefunt}
+                  onChange={(e) => setPriereForm((f) => ({ ...f, nomDefunt: e.target.value }))}
+                />
+              </div>
+            )}
+            <div className="form-group">
+              <label>Genre</label>
+              <select value={priereForm.genre} onChange={(e) => setPriereForm((f) => ({ ...f, genre: e.target.value }))}>
+                <option value="">Non précisé</option>
+                <option value="homme">Homme</option>
+                <option value="femme">Femme</option>
+                <option value="enfant">Enfant</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Date et heure</label>
+              <input
+                type="datetime-local"
+                value={priereForm.dateHeurePriere}
+                onChange={(e) => setPriereForm((f) => ({ ...f, dateHeurePriere: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Commentaire</label>
+              <textarea
+                value={priereForm.commentaire}
+                onChange={(e) => setPriereForm((f) => ({ ...f, commentaire: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Pays d'enterrement</label>
+                <input
+                  type="text"
+                  value={priereForm.paysEnterrement}
+                  onChange={(e) => setPriereForm((f) => ({ ...f, paysEnterrement: e.target.value }))}
+                  placeholder="France"
+                />
+              </div>
+              <div className="form-group">
+                <label>Lieu d'enterrement</label>
+                <input
+                  type="text"
+                  value={priereForm.villeEnterrement}
+                  onChange={(e) => setPriereForm((f) => ({ ...f, villeEnterrement: e.target.value }))}
+                  placeholder="Paris"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setEditPriere(null)}>Annuler</button>
+              <button type="submit" className="btn btn-primary" disabled={pSaving}>
+                {pSaving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── MODAL: Create Utilisateur ── */}
+      {showCreateUser && (
+        <Modal title="Nouvel utilisateur" onClose={() => setShowCreateUser(false)}>
+          <form className="auth-form" onSubmit={handleCreateUser}>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Prénom *</label>
+                <input
+                  type="text"
+                  value={createUserForm.prenom}
+                  onChange={(e) => setCreateUserForm((f) => ({ ...f, prenom: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Nom *</label>
+                <input
+                  type="text"
+                  value={createUserForm.nom}
+                  onChange={(e) => setCreateUserForm((f) => ({ ...f, nom: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Email *</label>
+              <input
+                type="email"
+                value={createUserForm.email}
+                onChange={(e) => setCreateUserForm((f) => ({ ...f, email: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Mot de passe *</label>
+              <input
+                type="password"
+                value={createUserForm.password}
+                onChange={(e) => setCreateUserForm((f) => ({ ...f, password: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Rôle</label>
+                <select value={createUserForm.role} onChange={(e) => setCreateUserForm((f) => ({ ...f, role: e.target.value }))}>
+                  <option value="User">Utilisateur</option>
+                  <option value="Admin">Administrateur</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Téléphone</label>
+                <input
+                  type="tel"
+                  value={createUserForm.telephone}
+                  onChange={(e) => setCreateUserForm((f) => ({ ...f, telephone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setShowCreateUser(false)}>Annuler</button>
+              <button type="submit" className="btn btn-primary" disabled={uSaving}>
+                {uSaving ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── MODAL: Edit Utilisateur ── */}
+      {editUser && (
+        <Modal title={`Modifier ${editUser.prenom} ${editUser.nom}`} onClose={() => setEditUser(null)}>
+          <form className="auth-form" onSubmit={handleSaveUser}>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Prénom</label>
+                <input
+                  type="text"
+                  value={editUserForm.prenom}
+                  onChange={(e) => setEditUserForm((f) => ({ ...f, prenom: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label>Nom</label>
+                <input
+                  type="text"
+                  value={editUserForm.nom}
+                  onChange={(e) => setEditUserForm((f) => ({ ...f, nom: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Téléphone</label>
+              <input
+                type="tel"
+                value={editUserForm.telephone}
+                onChange={(e) => setEditUserForm((f) => ({ ...f, telephone: e.target.value }))}
+              />
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setEditUser(null)}>Annuler</button>
+              <button type="submit" className="btn btn-primary" disabled={uSaving}>
+                {uSaving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}

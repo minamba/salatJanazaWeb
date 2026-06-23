@@ -1,0 +1,27 @@
+export const LOGIN_REQUEST = 'LOGIN_REQUEST';
+export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
+export const LOGIN_FAILURE = 'LOGIN_FAILURE';
+export const LOGIN_GOOGLE_REQUEST = 'LOGIN_GOOGLE_REQUEST';
+export const LOGIN_APPLE_REQUEST = 'LOGIN_APPLE_REQUEST';
+export const LOGOUT = 'LOGOUT';
+export const REGISTER_REQUEST = 'REGISTER_REQUEST';
+export const REGISTER_SUCCESS = 'REGISTER_SUCCESS';
+export const REGISTER_FAILURE = 'REGISTER_FAILURE';
+export const FORGOT_PASSWORD_REQUEST = 'FORGOT_PASSWORD_REQUEST';
+export const FORGOT_PASSWORD_SUCCESS = 'FORGOT_PASSWORD_SUCCESS';
+export const FORGOT_PASSWORD_FAILURE = 'FORGOT_PASSWORD_FAILURE';
+export const RESET_PASSWORD_REQUEST = 'RESET_PASSWORD_REQUEST';
+export const RESET_PASSWORD_SUCCESS = 'RESET_PASSWORD_SUCCESS';
+export const RESET_PASSWORD_FAILURE = 'RESET_PASSWORD_FAILURE';
+export const AUTH_RESET = 'AUTH_RESET';
+export const RESTORE_AUTH = 'RESTORE_AUTH';
+
+export const login = (email, password) => ({ type: LOGIN_REQUEST, payload: { email, password } });
+export const loginWithGoogle = (accessToken) => ({ type: LOGIN_GOOGLE_REQUEST, payload: { accessToken } });
+export const loginWithApple = (idToken) => ({ type: LOGIN_APPLE_REQUEST, payload: { idToken } });
+export const logout = () => ({ type: LOGOUT });
+export const register = (data) => ({ type: REGISTER_REQUEST, payload: data });
+export const forgotPassword = (email) => ({ type: FORGOT_PASSWORD_REQUEST, payload: { email } });
+export const resetPassword = (data) => ({ type: RESET_PASSWORD_REQUEST, payload: data });
+export const resetAuth = () => ({ type: AUTH_RESET });
+export const restoreAuth = () => ({ type: RESTORE_AUTH });
