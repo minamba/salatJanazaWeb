@@ -1,12 +1,10 @@
 import { forwardRef } from 'react';
-import mosqueeImg     from '../assets/icon3.png';
+import { useTranslation } from 'react-i18next';
+import mosqueeImg    from '../assets/icon3.png';
 import invocationImg from '../assets/invocation.png';
 import { capitalizeFirst } from '../lib/utils';
 
-const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const MOIS  = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-
-// Pays masculins → "au", pluriels → "aux", reste → "en"
+// Preposition logic — French only
 const PAYS_AU = new Set([
   'afghanistan','bahreïn','bahrain','belize','bénin','benin','botswana','burkina faso',
   'burundi','cambodge','cameroun','canada','chili','congo','costa rica','danemark',
@@ -32,25 +30,24 @@ function prepPays(pays) {
   return 'en';
 }
 
-function fmtDate(d) {
-  const date = new Date(d);
-  return `${JOURS[date.getDay()]} ${date.getDate()} ${MOIS[date.getMonth()]} ${date.getFullYear()}`;
-}
-function fmtHeure(d) {
-  const date = new Date(d);
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${h}h${m}`;
+function fmtDate(d, lang) {
+  const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
+  return new Date(d).toLocaleDateString(locale, {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
 }
 
-function anonymeLabel(genre) {
-  const g = genre?.toLowerCase() ?? '';
-  if (g === 'femme')  return 'Une sœur de la communauté';
-  if (g === 'enfant') return 'Un enfant de la communauté';
-  return 'Un frère de la communauté';
+function fmtHeure(d, lang) {
+  const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
+  return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
 const AvisDecesCard = forwardRef(({ data }, ref) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.startsWith('ar') ? 'ar' : i18n.language?.startsWith('en') ? 'en' : 'fr';
+  const isAr = lang === 'ar';
+  const isEn = lang === 'en';
+
   const {
     genre, nomDefunt, estAnonyme, nomFamille,
     showYears, anneNaissance, anneDeces,
@@ -59,83 +56,99 @@ const AvisDecesCard = forwardRef(({ data }, ref) => {
     dateHeurePriere,
   } = data;
 
-  const g           = genre?.toLowerCase() ?? '';
-  const isF         = g === 'femme';
-  const hasYears   = showYears && anneNaissance && anneDeces;
-  const burialStr  = [paysEnterrement, villeEnterrement].filter(Boolean).join(', ');
+  const g        = genre?.toLowerCase() ?? '';
+  const isF      = g === 'femme';
+  const hasYears = showYears && anneNaissance && anneDeces;
+  const burialStr = [paysEnterrement, villeEnterrement].filter(Boolean).join(', ');
 
-  // Name display
+  // ── Name display ─────────────────────────────────────────────────────────────
   let nomDisplay, sousNom;
   if (estAnonyme) {
-    nomDisplay = anonymeLabel(genre);
-    sousNom    = '(Inconnu(e))';
+    if (g === 'femme')  nomDisplay = t('avis.community_sister');
+    else if (g === 'enfant') nomDisplay = t('avis.community_child');
+    else nomDisplay = t('avis.community_brother');
+    sousNom = t('avis.unknown');
   } else {
-    const civilite = isF ? 'Mme.' : g === 'homme' ? 'M.' : '';
-    const nom      = nomDefunt || '';
-    nomDisplay     = civilite ? `${civilite} ${nom.toUpperCase()}` : nom.toUpperCase();
-    sousNom        = null;
+    let civilite;
+    if (isAr) {
+      civilite = '';
+    } else if (isEn) {
+      civilite = isF ? 'Mrs.' : g === 'homme' ? 'Mr.' : '';
+    } else {
+      civilite = isF ? 'Mme.' : g === 'homme' ? 'M.' : '';
+    }
+    const nom = nomDefunt || '';
+    nomDisplay = civilite ? `${civilite} ${nom.toUpperCase()}` : nom.toUpperCase();
+    sousNom = null;
   }
 
-  const duaAr = isF
-    ? 'اللهم اغفر لها وارحمها وعافها واعف عنها'
-    : 'اللهم اغفر له وارحمه وعافه واعف عنه';
+  // ── Family announce sentence ──────────────────────────────────────────────────
+  let familyAnnounce;
+  if (nomFamille) {
+    if (isAr) {
+      familyAnnounce = <>تُعلن عائلة <strong>{nomFamille.toUpperCase()}</strong> بحزن عن وفاة :</>;
+    } else if (isEn) {
+      familyAnnounce = <>The <strong>{nomFamille.toUpperCase()}</strong> family sorrowfully announces the passing of:</>;
+    } else {
+      familyAnnounce = <>La famille <strong>{nomFamille.toUpperCase()}</strong> est triste de vous annoncer le décès de :</>;
+    }
+  } else {
+    familyAnnounce = <>{t('avis.community_announce')}</>;
+  }
 
-  const duaTr = "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn.";
+  // ── Burial text ───────────────────────────────────────────────────────────────
+  let burialNode;
+  if (burialStr) {
+    if (isAr) {
+      burialNode = <span>الدفن في <strong>{burialStr}</strong></span>;
+    } else if (isEn) {
+      burialNode = <span>Burial in <strong>{burialStr}</strong></span>;
+    } else {
+      burialNode = <span>Enterrement {prepPays(paysEnterrement)} <strong>{burialStr}</strong></span>;
+    }
+  }
+
+  // ── Dua ───────────────────────────────────────────────────────────────────────
+  const duaText = isAr
+    ? (isF ? 'اللهم اغفر لها وارحمها وعافها واعف عنها' : 'اللهم اغفر له وارحمه وعافه واعف عنه')
+    : isF ? t('avis.dua_f') : t('avis.dua');
 
   return (
-    <div ref={ref} className="avis-card">
+    <div ref={ref} className="avis-card" dir={isAr ? 'rtl' : 'ltr'}>
 
-      {/* ── Header ─── */}
+      {/* ── Header ── */}
       <div className="avis-header">
         <img src={mosqueeImg} alt="" className="avis-header-icon" />
         <div>
           <div className="avis-header-title">Salat al-Janaza</div>
-          <div className="avis-header-sub">Annonce de décès</div>
+          <div className="avis-header-sub">{t('avis.subtitle')}</div>
         </div>
       </div>
 
-      {/* ── Body ─── */}
+      {/* ── Body ── */}
       <div className="avis-body">
 
-        {/* Verset — image calligraphique */}
         <div className="avis-verse-wrap">
           <img src={invocationImg} alt="Inna lillahi wa inna ilayhi raji'un" className="avis-verse-img" />
         </div>
         <div className="avis-sep-line" />
 
-        {/* Annonce famille */}
-        <p className="avis-family-text">
-          {nomFamille
-            ? <>La famille <strong>{nomFamille.toUpperCase()}</strong> est triste de vous annoncer le décès de :</>
-            : <>Nous vous annonçons avec tristesse le décès de :</>
-          }
-        </p>
+        <p className="avis-family-text">{familyAnnounce}</p>
 
-        {/* Nom + infos complémentaires */}
         <div className="avis-name-block">
           <div className="avis-name">{nomDisplay}</div>
-
-          {sousNom && (
-            <div className="avis-sous-nom">{sousNom}</div>
-          )}
-
-          {hasYears && (
-            <div className="avis-years">{anneNaissance} – {anneDeces}</div>
-          )}
-
-          {commentaire && (
-            <p className="avis-commentaire">{commentaire}</p>
-          )}
+          {sousNom && <div className="avis-sous-nom">{sousNom}</div>}
+          {hasYears && <div className="avis-years">{anneNaissance} – {anneDeces}</div>}
+          {commentaire && <p className="avis-commentaire">{commentaire}</p>}
         </div>
 
         <div className="avis-sep-line" />
 
-        {/* Prière */}
         <div className="avis-prayer-block">
-          <div className="avis-prayer-label">PRIÈRE</div>
+          <div className="avis-prayer-label">{t('avis.prayer_label')}</div>
           {dateHeurePriere && (
             <div className="avis-prayer-datetime">
-              {fmtDate(dateHeurePriere)} · {fmtHeure(dateHeurePriere)}
+              {fmtDate(dateHeurePriere, lang)} · {fmtHeure(dateHeurePriere, lang)}
             </div>
           )}
           {mosqueeNom && (
@@ -150,29 +163,27 @@ const AvisDecesCard = forwardRef(({ data }, ref) => {
               </div>
             </div>
           )}
-
-          {burialStr && (
+          {burialNode && (
             <div className="avis-burial-row">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
-              <span>Enterrement {prepPays(paysEnterrement)} <strong>{burialStr}</strong></span>
+              <span>{burialNode}</span>
             </div>
           )}
         </div>
 
         <div className="avis-sep-line" />
 
-        {/* Dua */}
         <div className="avis-dua-block">
-          <div className="avis-dua-tr">{duaTr}</div>
+          <div className={isAr ? 'avis-dua-ar' : 'avis-dua-tr'}>{duaText}</div>
         </div>
 
       </div>
 
-      {/* ── Footer ─── */}
+      {/* ── Footer ── */}
       <div className="avis-footer">SALATJANAZA.ORG</div>
 
     </div>

@@ -23,6 +23,7 @@
       "title": "Never miss a <em>janaza prayer</em>",
       "desc": "Salat Janaza notifies you in real time of funeral prayers in mosques near you. Receive the immense reward of the qirat.",
       "cta_prayers": "View upcoming prayers",
+      "cta_declare": "Declare a janaza",
       "cta_register": "Create an account",
       "available_on": "Available on",
       "screen_mosques": "Mosques screen",
@@ -210,5 +211,19 @@
     "declare": "+ Declare a prayer",
     "admin": "Administration",
     "logout": "Log out"
+  },
+  "avis": {
+    "subtitle": "Death announcement",
+    "community_announce": "We sorrowfully announce the passing of:",
+    "community_brother": "A brother from the community",
+    "community_sister": "A sister from the community",
+    "community_child": "A child from the community",
+    "unknown": "(Unknown)",
+    "prayer_label": "PRAYER",
+    "dua": "May Allah grant him His mercy, forgive his sins and welcome him into His paradise. Ameen.",
+    "dua_f": "May Allah grant her His mercy, forgive her sins and welcome her into His paradise. Ameen."
+  },
+  "mosquee": {
+    "add_autocomplete_hint": "It is not necessary to select a suggestion from the autocomplete. You can type the address manually."
   }
 }

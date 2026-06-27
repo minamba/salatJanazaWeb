@@ -2,9 +2,11 @@ import { useEffect, useState, useMemo, useCallback, lazy, Suspense, useRef } fro
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchPrieresUpcoming } from '../lib/actions/priereJanazaActions';
+import { fetchPrieresUpcoming, updatePriere, deletePriere } from '../lib/actions/priereJanazaActions';
+import { fetchMosquees } from '../lib/actions/mosqueeActions';
 import { getUtilisateurByIdentityId } from '../lib/api/utilisateurApi';
 import PriereCard from './shared/PriereCard';
+import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
 
 const PriereMap = lazy(() => import('../components/PriereMap'));
 
@@ -80,6 +82,10 @@ export default function PrieresPage() {
   const { list, loading } = useSelector((s) => s.priereJanaza);
   const { isAuthenticated, user } = useSelector((s) => s.auth);
   const [resolvedDbId, setResolvedDbId] = useState(null);
+  const [editPriere, setEditPriere]     = useState(null);
+  const [priereForm, setPriereForm]     = useState({});
+
+  const isAdmin = user?.role && ['admin', 'superadmin'].includes(user.role.toLowerCase());
 
   useEffect(() => {
     if (!user?.id) return;
@@ -123,7 +129,7 @@ export default function PrieresPage() {
   const [filterDate,    setFilterDate]    = useState('');
   const [sortProximity, setSortProximity] = useState(false);
 
-  useEffect(() => { dispatch(fetchPrieresUpcoming()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchPrieresUpcoming()); dispatch(fetchMosquees()); }, [dispatch]);
 
   const uniqueMosquees = useMemo(() => {
     const seen = new Set();
@@ -173,6 +179,16 @@ export default function PrieresPage() {
   const handleProximity = () => { requestGeo(); setSortProximity((v) => !v); };
 
   const switchView = (v) => { setView(v); if (v === 'map') setMapMode('country'); };
+
+  const openEdit = (priere) => { setEditPriere(priere); setPriereForm(buildInitialForm(priere)); };
+  const handleSavePriere = (e) => {
+    e.preventDefault();
+    dispatch(updatePriere(editPriere.id, buildPayload(priereForm)));
+    setEditPriere(null);
+  };
+  const handleDelete = (id) => {
+    if (window.confirm('Supprimer cette prière ?')) dispatch(deletePriere(id));
+  };
 
   return (
     <div className="prieres-page">
@@ -330,7 +346,6 @@ export default function PrieresPage() {
             <>
               <div className="prieres-count-row">
                 <span className="prieres-count">
-                  {filteredList.length}{' '}
                   {filteredList.length <= 1 ? t('prieres.count_one', { count: filteredList.length }) : t('prieres.count_other', { count: filteredList.length })}
                   {hasFilter ? t('prieres.matching') : t('prieres.upcoming_suffix')}
                 </span>
@@ -350,14 +365,32 @@ export default function PrieresPage() {
                 </div>
               ) : (
                 <div className="card-grid">
-                  {filteredList.map((p) => (
-                    <PriereCard key={p.id} priere={p} userPos={userPos} />
-                  ))}
+                  {filteredList.map((p) => {
+                    const canAct = isAdmin || p.utilisateurId === resolvedDbId;
+                    return (
+                      <PriereCard
+                        key={p.id}
+                        priere={p}
+                        userPos={userPos}
+                        onEdit={canAct ? openEdit : undefined}
+                        onDelete={canAct ? handleDelete : undefined}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </>
           )}
         </div>
+      )}
+      {editPriere && (
+        <EditPriereModal
+          priere={editPriere}
+          form={priereForm}
+          setForm={setPriereForm}
+          onClose={() => setEditPriere(null)}
+          onSubmit={handleSavePriere}
+        />
       )}
     </div>
   );

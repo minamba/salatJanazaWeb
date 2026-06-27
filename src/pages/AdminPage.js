@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee } from '../lib/actions/mosqueeActions';
+import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee, fetchPendingMosquees, validerMosquee as validerMosqueeReq } from '../lib/actions/mosqueeActions';
 import { fetchPrieres, deletePriere, updatePriere } from '../lib/actions/priereJanazaActions';
 import {
   fetchUtilisateurs,
@@ -70,11 +70,22 @@ function toUTCISOString(localStr) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const dispatch = useDispatch();
-  const { list: mosquees, loading: mLoading } = useSelector((s) => s.mosquee);
+  const { list: mosquees, pendingList: pendingMosquees, loading: mLoading, pendingLoading: mPendingLoading } = useSelector((s) => s.mosquee);
   const { list: prieres, loading: pLoading, saving: pSaving } = useSelector((s) => s.priereJanaza);
   const { list: utilisateurs, loading: uLoading, saving: uSaving, saveError: uSaveError } = useSelector((s) => s.utilisateur);
 
   const [tab, setTab] = useState('prieres');
+  const [mosqueeSubTab, setMosqueeSubTab] = useState('enregistrees');
+  const [selectedPending, setSelectedPending] = useState(new Set());
+
+  // ── Toast notification ────────────────────────────────────────────────────────
+  const [notif, setNotif] = useState(null);
+  const notifTimer = useRef(null);
+  const showNotif = useCallback((message, type = 'success') => {
+    if (notifTimer.current) clearTimeout(notifTimer.current);
+    setNotif({ message, type });
+    notifTimer.current = setTimeout(() => setNotif(null), 4500);
+  }, []);
 
   // ── Search states ────────────────────────────────────────────────────────────
   const [searchPriereText, setSearchPriereText] = useState('');
@@ -109,6 +120,13 @@ export default function AdminPage() {
     dispatch(fetchPrieres());
     dispatch(fetchUtilisateurs());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (tab === 'mosquees' && mosqueeSubTab === 'enattente') {
+      dispatch(fetchPendingMosquees());
+      setSelectedPending(new Set());
+    }
+  }, [tab, mosqueeSubTab, dispatch]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const getDeclarantName = useCallback((utilisateurId) => {
@@ -217,12 +235,16 @@ export default function AdminPage() {
   const openEditPriere = (p) => {
     setEditPriere(p);
     setPriereForm({
-      nomDefunt: p.nomDefunt ?? '',
-      estAnonyme: p.estAnonyme,
-      genre: normalizeGenre(p.genre),
-      dateHeurePriere: p.dateHeurePriere ? toLocalDatetimeInput(p.dateHeurePriere) : '',
-      commentaire: p.commentaire ?? '',
-      paysEnterrement: p.paysEnterrement ?? '',
+      mosqueeId:        p.mosqueeId ?? '',
+      nomDefunt:        p.nomDefunt ?? '',
+      estAnonyme:       p.estAnonyme,
+      genre:            normalizeGenre(p.genre),
+      dateHeurePriere:  p.dateHeurePriere ? toLocalDatetimeInput(p.dateHeurePriere) : '',
+      noYearInfo:       !(p.anneeNaissance || p.anneeDeces),
+      anneeNaissance:   p.anneeNaissance ?? '',
+      anneeDeces:       p.anneeDeces ?? '',
+      commentaire:      p.commentaire ?? '',
+      paysEnterrement:  p.paysEnterrement ?? '',
       villeEnterrement: p.villeEnterrement ?? '',
     });
   };
@@ -230,12 +252,15 @@ export default function AdminPage() {
   const handleSavePriere = (e) => {
     e.preventDefault();
     dispatch(updatePriere(editPriere.id, {
-      nomDefunt: priereForm.estAnonyme ? null : (priereForm.nomDefunt || null),
-      estAnonyme: priereForm.estAnonyme,
-      genre: priereForm.genre || null,
-      dateHeurePriere: priereForm.dateHeurePriere ? toUTCISOString(priereForm.dateHeurePriere) : priereForm.dateHeurePriere,
-      commentaire: priereForm.commentaire || null,
-      paysEnterrement: priereForm.paysEnterrement || null,
+      mosqueeId:        priereForm.mosqueeId ? parseInt(priereForm.mosqueeId) : editPriere.mosqueeId,
+      nomDefunt:        priereForm.estAnonyme ? null : (priereForm.nomDefunt || null),
+      estAnonyme:       priereForm.estAnonyme,
+      genre:            priereForm.genre || null,
+      dateHeurePriere:  priereForm.dateHeurePriere ? toUTCISOString(priereForm.dateHeurePriere) : priereForm.dateHeurePriere,
+      anneeNaissance:   (!priereForm.noYearInfo && priereForm.anneeNaissance) ? parseInt(priereForm.anneeNaissance) : null,
+      anneeDeces:       (!priereForm.noYearInfo && priereForm.anneeDeces) ? parseInt(priereForm.anneeDeces) : null,
+      commentaire:      priereForm.commentaire || null,
+      paysEnterrement:  priereForm.paysEnterrement || null,
       villeEnterrement: priereForm.villeEnterrement || null,
     }));
     setEditPriere(null);
@@ -269,6 +294,72 @@ export default function AdminPage() {
       telephone: editUserForm.telephone || null,
     }));
     setEditUser(null);
+  };
+
+  // ── Pending mosque handlers ───────────────────────────────────────────────────
+  const toggleSelectPending = (id) => {
+    setSelectedPending((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllPending = () => {
+    if (selectedPending.size === pendingMosquees.length && pendingMosquees.length > 0) {
+      setSelectedPending(new Set());
+    } else {
+      setSelectedPending(new Set(pendingMosquees.map((m) => m.id)));
+    }
+  };
+
+  const handleValiderPending = (id) => {
+    const m = pendingMosquees.find((x) => x.id === id);
+    dispatch(validerMosqueeReq(id));
+    showNotif(`✓ La mosquée "${m?.nom ?? id}" a été validée et ajoutée à la liste.`);
+  };
+
+  const handleRefuserPending = (id) => {
+    const m = pendingMosquees.find((x) => x.id === id);
+    if (!window.confirm(`Refuser et supprimer "${m?.nom ?? 'cette mosquée'}" ?`)) return;
+    dispatch(deleteMosquee(id));
+    showNotif(`La mosquée "${m?.nom ?? id}" a été refusée et supprimée.`, 'error');
+  };
+
+  const handleValiderSelection = () => {
+    if (!selectedPending.size) return;
+    const count = selectedPending.size;
+    if (!window.confirm(`Valider ${count} mosquée(s) sélectionnée(s) ?`)) return;
+    selectedPending.forEach((id) => dispatch(validerMosqueeReq(id)));
+    setSelectedPending(new Set());
+    showNotif(`✓ Les ${count} mosquées sélectionnées ont été validées avec succès.`);
+  };
+
+  const handleRefuserSelection = () => {
+    if (!selectedPending.size) return;
+    const count = selectedPending.size;
+    if (!window.confirm(`Refuser et supprimer ${count} mosquée(s) sélectionnée(s) ?`)) return;
+    selectedPending.forEach((id) => dispatch(deleteMosquee(id)));
+    setSelectedPending(new Set());
+    showNotif(`Les ${count} mosquées sélectionnées ont été refusées et supprimées.`, 'error');
+  };
+
+  const handleValiderTous = () => {
+    if (!pendingMosquees.length) return;
+    const count = pendingMosquees.length;
+    if (!window.confirm(`Valider toutes les ${count} mosquée(s) en attente ?`)) return;
+    pendingMosquees.forEach((m) => dispatch(validerMosqueeReq(m.id)));
+    setSelectedPending(new Set());
+    showNotif(`✓ Toutes les ${count} mosquées en attente ont été validées avec succès.`);
+  };
+
+  const handleRefuserTous = () => {
+    if (!pendingMosquees.length) return;
+    const count = pendingMosquees.length;
+    if (!window.confirm(`Refuser et supprimer toutes les ${count} mosquée(s) en attente ?`)) return;
+    pendingMosquees.forEach((m) => dispatch(deleteMosquee(m.id)));
+    setSelectedPending(new Set());
+    showNotif(`Toutes les ${count} mosquées en attente ont été refusées et supprimées.`, 'error');
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -386,92 +477,194 @@ export default function AdminPage() {
         {/* ── MOSQUEES ── */}
         {tab === 'mosquees' && (
           <div>
-            <h2>Ajouter une mosquée</h2>
-            <form onSubmit={handleAddMosquee} className="auth-form" style={{ maxWidth: '500px', marginBottom: '2rem' }}>
-              <div className="form-group">
-                <label>Nom *</label>
-                <input
-                  type="text"
-                  value={mosqueeForm.nom}
-                  onChange={(e) => setMosqueeForm((f) => ({ ...f, nom: e.target.value }))}
-                  placeholder="Grande Mosquée de Paris"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Adresse *</label>
-                <input
-                  type="text"
-                  value={mosqueeForm.adresse}
-                  onChange={(e) => setMosqueeForm((f) => ({ ...f, adresse: e.target.value }))}
-                  placeholder="2 bis place du Puits de l'Ermite, 75005 Paris"
-                  required
-                />
-              </div>
-              {geoError && <div className="alert alert-error">{geoError}</div>}
-              <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: '-0.5rem' }}>
-                Les coordonnées GPS seront calculées automatiquement depuis l'adresse.
-              </p>
-              <button type="submit" className="btn btn-primary" disabled={geoLoading}>
-                {geoLoading ? 'Géocodage en cours...' : 'Ajouter'}
+            {/* Sub-tabs */}
+            <div className="tab-buttons" style={{ marginBottom: '1.5rem' }}>
+              <button
+                className={`btn ${mosqueeSubTab === 'enregistrees' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setMosqueeSubTab('enregistrees')}
+              >
+                Enregistrées ({mosquees.length})
               </button>
-            </form>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0 }}>Mosquées enregistrées</h2>
+              <button
+                className={`btn ${mosqueeSubTab === 'enattente' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setMosqueeSubTab('enattente')}
+              >
+                En attente {pendingMosquees.length > 0 ? `(${pendingMosquees.length})` : ''}
+              </button>
             </div>
 
-            <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
-              <SearchBar
-                value={searchMosquee}
-                onChange={setSearchMosquee}
-                placeholder="Rechercher par nom ou adresse…"
-              />
-            </div>
+            {/* ─ Sous-onglet : Enregistrées ─ */}
+            {mosqueeSubTab === 'enregistrees' && (
+              <div>
+                <h2>Ajouter une mosquée</h2>
+                <form onSubmit={handleAddMosquee} className="auth-form" style={{ maxWidth: '500px', marginBottom: '2rem' }}>
+                  <div className="form-group">
+                    <label>Nom *</label>
+                    <input
+                      type="text"
+                      value={mosqueeForm.nom}
+                      onChange={(e) => setMosqueeForm((f) => ({ ...f, nom: e.target.value }))}
+                      placeholder="Grande Mosquée de Paris"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Adresse *</label>
+                    <input
+                      type="text"
+                      value={mosqueeForm.adresse}
+                      onChange={(e) => setMosqueeForm((f) => ({ ...f, adresse: e.target.value }))}
+                      placeholder="2 bis place du Puits de l'Ermite, 75005 Paris"
+                      required
+                    />
+                  </div>
+                  {geoError && <div className="alert alert-error">{geoError}</div>}
+                  <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: '-0.5rem' }}>
+                    Les coordonnées GPS seront calculées automatiquement depuis l'adresse.
+                  </p>
+                  <button type="submit" className="btn btn-primary" disabled={geoLoading}>
+                    {geoLoading ? 'Géocodage en cours...' : 'Ajouter'}
+                  </button>
+                </form>
 
-            <p className="admin-count">
-              {filteredMosquees.length} résultat{filteredMosquees.length !== 1 ? 's' : ''}
-              {filteredMosquees.length !== mosquees.length && ` sur ${mosquees.length}`}
-            </p>
+                <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
+                  <SearchBar
+                    value={searchMosquee}
+                    onChange={setSearchMosquee}
+                    placeholder="Rechercher par nom ou adresse…"
+                  />
+                </div>
 
-            {mLoading && <p className="text-muted">Chargement...</p>}
-            <div className="admin-table-scroll">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Adresse</th>
-                    <th>Lat</th>
-                    <th>Lng</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMosquees.map((m) => (
-                    <tr key={m.id}>
-                      <td>{m.id}</td>
-                      <td>{m.nom}</td>
-                      <td>{m.adresse ?? '—'}</td>
-                      <td>{m.latitude?.toFixed(4)}</td>
-                      <td>{m.longitude?.toFixed(4)}</td>
-                      <td className="admin-actions">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEditMosquee(m)}>Modifier</button>
-                        <button
-                          className="btn btn-danger-sm"
-                          onClick={() => window.confirm('Supprimer cette mosquée ?') && dispatch(deleteMosquee(m.id))}
-                        >
-                          Supprimer
+                <p className="admin-count">
+                  {filteredMosquees.length} résultat{filteredMosquees.length !== 1 ? 's' : ''}
+                  {filteredMosquees.length !== mosquees.length && ` sur ${mosquees.length}`}
+                </p>
+
+                {mLoading && <p className="text-muted">Chargement...</p>}
+                <div className="admin-table-scroll">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Adresse</th>
+                        <th>Lat</th>
+                        <th>Lng</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMosquees.map((m) => (
+                        <tr key={m.id}>
+                          <td>{m.id}</td>
+                          <td>{m.nom}</td>
+                          <td>{m.adresse ?? '—'}</td>
+                          <td>{m.latitude?.toFixed(4)}</td>
+                          <td>{m.longitude?.toFixed(4)}</td>
+                          <td className="admin-actions">
+                            <button className="btn btn-sm btn-outline" onClick={() => openEditMosquee(m)}>Modifier</button>
+                            <button
+                              className="btn btn-danger-sm"
+                              onClick={() => window.confirm('Supprimer cette mosquée ?') && dispatch(deleteMosquee(m.id))}
+                            >
+                              Supprimer
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredMosquees.length === 0 && (
+                        <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ─ Sous-onglet : En attente ─ */}
+            {mosqueeSubTab === 'enattente' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0 }}>Demandes en attente de validation</h2>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {selectedPending.size > 0 && (
+                      <>
+                        <button className="btn btn-primary btn-sm" onClick={handleValiderSelection}>
+                          ✓ Valider la sélection ({selectedPending.size})
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredMosquees.length === 0 && (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        <button className="btn btn-danger-sm" onClick={handleRefuserSelection}>
+                          ✕ Refuser la sélection ({selectedPending.size})
+                        </button>
+                      </>
+                    )}
+                    <button className="btn btn-outline btn-sm" onClick={handleValiderTous} disabled={!pendingMosquees.length}>
+                      Tout accepter
+                    </button>
+                    <button className="btn btn-danger-sm" onClick={handleRefuserTous} disabled={!pendingMosquees.length}>
+                      Tout refuser
+                    </button>
+                  </div>
+                </div>
+
+                <p className="admin-count">
+                  {pendingMosquees.length} demande{pendingMosquees.length !== 1 ? 's' : ''} en attente
+                </p>
+
+                {mPendingLoading && <p className="text-muted">Chargement...</p>}
+                <div className="admin-table-scroll">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input
+                            type="checkbox"
+                            checked={selectedPending.size === pendingMosquees.length && pendingMosquees.length > 0}
+                            onChange={toggleSelectAllPending}
+                          />
+                        </th>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Adresse</th>
+                        <th>Lat</th>
+                        <th>Lng</th>
+                        <th>Soumis le</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingMosquees.map((m) => (
+                        <tr key={m.id} style={selectedPending.has(m.id) ? { background: 'var(--bg-selected, #e8f4fd)' } : {}}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedPending.has(m.id)}
+                              onChange={() => toggleSelectPending(m.id)}
+                            />
+                          </td>
+                          <td>{m.id}</td>
+                          <td>{m.nom}</td>
+                          <td>{m.adresse ?? '—'}</td>
+                          <td>{m.latitude?.toFixed(4) ?? '—'}</td>
+                          <td>{m.longitude?.toFixed(4) ?? '—'}</td>
+                          <td>{fmtDateOnly(m.dateCreation ?? m.dateSoumission)}</td>
+                          <td className="admin-actions">
+                            <button className="btn btn-sm btn-primary" onClick={() => handleValiderPending(m.id)}>
+                              ✓ Valider
+                            </button>
+                            <button className="btn btn-danger-sm" onClick={() => handleRefuserPending(m.id)}>
+                              ✕ Refuser
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!mPendingLoading && pendingMosquees.length === 0 && (
+                        <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucune demande en attente</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -627,6 +820,15 @@ export default function AdminPage() {
               </div>
             )}
             <div className="form-group">
+              <label>Mosquée *</label>
+              <select value={priereForm.mosqueeId} onChange={(e) => setPriereForm((f) => ({ ...f, mosqueeId: e.target.value }))}>
+                <option value="">— Sélectionner une mosquée —</option>
+                {mosquees.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
               <label>Genre</label>
               <select value={priereForm.genre} onChange={(e) => setPriereForm((f) => ({ ...f, genre: e.target.value }))}>
                 <option value="">Non précisé</option>
@@ -636,7 +838,7 @@ export default function AdminPage() {
               </select>
             </div>
             <div className="form-group">
-              <label>Date et heure</label>
+              <label>Date et heure *</label>
               <input
                 type="datetime-local"
                 value={priereForm.dateHeurePriere}
@@ -644,6 +846,53 @@ export default function AdminPage() {
                 required
               />
             </div>
+            <div className="toggle-row" style={{ marginBottom: '0.75rem' }}>
+              <div>
+                <div className="toggle-label">Années de naissance et de décès</div>
+                <div className="toggle-sub">
+                  {priereForm.noYearInfo ? 'Aucune information renseignée' : 'Informations disponibles'}
+                </div>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={!priereForm.noYearInfo}
+                  onChange={(e) => setPriereForm((f) => ({
+                    ...f,
+                    noYearInfo: !e.target.checked,
+                    anneeNaissance: !e.target.checked ? '' : f.anneeNaissance,
+                    anneeDeces: !e.target.checked ? '' : f.anneeDeces,
+                  }))}
+                />
+                <span className="toggle-knob" />
+              </label>
+            </div>
+            {!priereForm.noYearInfo && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Année de naissance</label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max="2100"
+                    value={priereForm.anneeNaissance}
+                    onChange={(e) => setPriereForm((f) => ({ ...f, anneeNaissance: e.target.value }))}
+                    placeholder="ex : 1950"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Année de décès</label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max="2100"
+                    value={priereForm.anneeDeces}
+                    onChange={(e) => setPriereForm((f) => ({ ...f, anneeDeces: e.target.value }))}
+                    placeholder="ex : 2024"
+                  />
+                </div>
+              </div>
+            )}
             <div className="form-group">
               <label>Commentaire</label>
               <textarea
@@ -789,6 +1038,14 @@ export default function AdminPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* ── Toast notification ── */}
+      {notif && (
+        <div className={`admin-toast admin-toast-${notif.type}`}>
+          <span>{notif.message}</span>
+          <button className="admin-toast-close" onClick={() => setNotif(null)}>✕</button>
+        </div>
       )}
     </div>
   );

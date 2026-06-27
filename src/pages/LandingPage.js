@@ -2,8 +2,11 @@ import { useEffect, useState, useMemo, useCallback, useRef, lazy, Suspense } fro
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { fetchPrieresUpcoming } from '../lib/actions/priereJanazaActions';
+import { fetchPrieresUpcoming, updatePriere, deletePriere } from '../lib/actions/priereJanazaActions';
+import { fetchMosquees } from '../lib/actions/mosqueeActions';
+import { getUtilisateurByIdentityId } from '../lib/api/utilisateurApi';
 import PriereCard from './shared/PriereCard';
+import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
 import motifBg from '../assets/motif-islamique.png';
 import iphoImg from '../assets/notif.png';
 import screen1 from '../assets/test1.png';
@@ -34,6 +37,12 @@ export default function LandingPage() {
   const { t, i18n } = useTranslation();
   const locale = LOCALE_MAP[i18n.language] ?? 'fr-FR';
   const { list: prieres, loading } = useSelector((s) => s.priereJanaza);
+  const { isAuthenticated, user } = useSelector((s) => s.auth);
+  const [resolvedDbId, setResolvedDbId] = useState(null);
+  const [editPriere, setEditPriere]     = useState(null);
+  const [priereForm, setPriereForm]     = useState({});
+
+  const isAdmin = user?.role && ['admin', 'superadmin'].includes(user.role.toLowerCase());
 
   const isMobile = window.innerWidth <= 700;
   const [showMap, setShowMap]     = useState(!isMobile);
@@ -45,7 +54,15 @@ export default function LandingPage() {
   const [filterDate,    setFilterDate]    = useState('');
   const [sortProximity, setSortProximity] = useState(false);
 
-  useEffect(() => { dispatch(fetchPrieresUpcoming()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchPrieresUpcoming()); dispatch(fetchMosquees()); }, [dispatch]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (user.dbId) { setResolvedDbId(user.dbId); return; }
+    getUtilisateurByIdentityId(user.id)
+      .then(res => { if (res.data?.id) setResolvedDbId(res.data.id); })
+      .catch(() => {});
+  }, [user]);
 
   const geoAsked = useRef(false);
   const [geoError, setGeoError] = useState(false);
@@ -107,6 +124,16 @@ export default function LandingPage() {
 
   const handleProximity = () => { requestGeo(); setSortProximity((v) => !v); };
 
+  const openEdit = (priere) => { setEditPriere(priere); setPriereForm(buildInitialForm(priere)); };
+  const handleSavePriere = (e) => {
+    e.preventDefault();
+    dispatch(updatePriere(editPriere.id, buildPayload(priereForm)));
+    setEditPriere(null);
+  };
+  const handleDelete = (id) => {
+    if (window.confirm('Supprimer cette prière ?')) dispatch(deletePriere(id));
+  };
+
   const GENRES = [
     { value: 'Homme', key: 'homme' },
     { value: 'Femme', key: 'femme' },
@@ -124,8 +151,8 @@ export default function LandingPage() {
             <h1 dangerouslySetInnerHTML={{ __html: t('landing.hero.title') }} />
             <p>{t('landing.hero.desc')}</p>
             <div className="hero-actions">
-              <Link to="/prieres" className="btn btn-white">{t('landing.hero.cta_prayers')}</Link>
-              <Link to="/inscription" className="btn btn-outline-white">{t('landing.hero.cta_register')}</Link>
+              <Link to={isAuthenticated ? '/tableau-de-bord/declarer' : '/connexion'} className="btn btn-white">{t('landing.hero.cta_declare')}</Link>
+              <Link to="/prieres" className="btn btn-outline-white">{t('landing.hero.cta_prayers')}</Link>
             </div>
             <div className="hero-store-row">
               <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-apple">
@@ -363,9 +390,18 @@ export default function LandingPage() {
                 </p>
               )}
               <div className="card-grid">
-                {filteredPrieres.slice(0, 12).map((p) => (
-                  <PriereCard key={p.id} priere={p} userPos={userPos} />
-                ))}
+                {filteredPrieres.slice(0, 12).map((p) => {
+                  const canAct = isAdmin || p.utilisateurId === resolvedDbId;
+                  return (
+                    <PriereCard
+                      key={p.id}
+                      priere={p}
+                      userPos={userPos}
+                      onEdit={canAct ? openEdit : undefined}
+                      onDelete={canAct ? handleDelete : undefined}
+                    />
+                  );
+                })}
               </div>
               {filteredPrieres.length > 0 && (
                 <div className="text-center" style={{ marginTop: '2rem' }}>
@@ -410,6 +446,15 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      {editPriere && (
+        <EditPriereModal
+          priere={editPriere}
+          form={priereForm}
+          setForm={setPriereForm}
+          onClose={() => setEditPriere(null)}
+          onSubmit={handleSavePriere}
+        />
+      )}
     </>
   );
 }

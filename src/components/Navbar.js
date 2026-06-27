@@ -53,13 +53,13 @@ export default function Navbar() {
         {/* Nav links — desktop */}
         <div className={`navbar-links${menuOpen ? ' open' : ''}`}>
           <Link to="/prieres" onClick={() => setMenuOpen(false)}>{t('nav.prayers')}</Link>
+          <Link to={isAuthenticated ? '/tableau-de-bord/declarer' : '/connexion'} onClick={() => setMenuOpen(false)}>{t('nav.declare')}</Link>
           <Link to="/contact" onClick={() => setMenuOpen(false)}>{t('nav.contact')}</Link>
           <Link to="/soutenez-nous" className="navbar-donate" onClick={() => setMenuOpen(false)}>
             {t('nav.support')}
           </Link>
           {isAuthenticated ? (
             <>
-              <Link to="/tableau-de-bord/declarer" onClick={() => setMenuOpen(false)}>{t('nav.declare')}</Link>
               <Link to="/tableau-de-bord" onClick={() => setMenuOpen(false)}>{t('nav.account')}</Link>
               <button className="btn btn-outline-white" onClick={handleLogout}>{t('nav.logout')}</button>
             </>

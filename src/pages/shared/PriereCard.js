@@ -88,6 +88,15 @@ function IconTrash() {
   );
 }
 
+function IconEdit() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  );
+}
+
 function IconShare() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -99,6 +108,8 @@ function IconShare() {
 function AvisDecesModal({ priere, onClose }) {
   const cardRef = useRef(null);
   const [sharing, setSharing] = useState(false);
+  const [iosImg, setIosImg] = useState(null);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
   const nomFamille = rawNom.trim().split(/\s+/)[0] ?? '';
@@ -125,10 +136,16 @@ function AvisDecesModal({ priere, onClose }) {
     setSharing(true);
     try {
       const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: null });
-      const link = document.createElement('a');
-      link.download = `janaza-${priere.id}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      if (isIOS) {
+        setIosImg(canvas.toDataURL('image/png'));
+      } else {
+        const link = document.createElement('a');
+        link.download = `janaza-${priere.id}.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (e) {
       console.warn('download error', e);
     } finally {
@@ -137,25 +154,38 @@ function AvisDecesModal({ priere, onClose }) {
   }
 
   return createPortal(
-    <div className="avis-modal-overlay" onClick={onClose}>
+    <div className="avis-modal-overlay" onClick={iosImg ? undefined : onClose}>
       <div className="avis-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="avis-modal-topbar">
-          <button className="avis-modal-close" onClick={onClose}>✕</button>
-          <span className="avis-modal-title">Avis de décès</span>
-          <button className="avis-modal-share-btn" onClick={handleShare} disabled={sharing}>
-            {sharing ? '…' : <><IconShare /> Télécharger</>}
+          <button className="avis-modal-close" onClick={iosImg ? () => setIosImg(null) : onClose}>
+            {iosImg ? '← Retour' : '✕'}
           </button>
+          <span className="avis-modal-title">{iosImg ? 'Enregistrer' : 'Avis de décès'}</span>
+          {iosImg ? <span /> : (
+            <button className="avis-modal-share-btn" onClick={handleShare} disabled={sharing}>
+              {sharing ? '…' : <><IconShare /> Télécharger</>}
+            </button>
+          )}
         </div>
-        <div className="avis-modal-preview-scroll">
-          <AvisDecesCard ref={cardRef} data={cardData} />
-        </div>
+        {iosImg ? (
+          <div className="avis-modal-preview-scroll" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', gap: '0.75rem' }}>
+            <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#555', margin: 0 }}>
+              Appuyez longuement sur l'image pour l'enregistrer dans votre galerie 📷
+            </p>
+            <img src={iosImg} alt="Avis de décès" style={{ maxWidth: '100%', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }} />
+          </div>
+        ) : (
+          <div className="avis-modal-preview-scroll">
+            <AvisDecesCard ref={cardRef} data={cardData} />
+          </div>
+        )}
       </div>
     </div>,
     document.body
   );
 }
 
-export default function PriereCard({ priere, onDelete, userPos }) {
+export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
   const { t, i18n } = useTranslation();
   const locale = LOCALE_MAP[i18n.language] ?? 'fr-FR';
   const [showShare, setShowShare] = useState(false);
@@ -246,6 +276,15 @@ export default function PriereCard({ priere, onDelete, userPos }) {
           >
             <IconShare />
           </button>
+          {onEdit && (
+            <button
+              className="pc-edit"
+              onClick={() => onEdit(priere)}
+              title="Modifier"
+            >
+              <IconEdit />
+            </button>
+          )}
           {onDelete && (
             <button
               className="pc-delete"

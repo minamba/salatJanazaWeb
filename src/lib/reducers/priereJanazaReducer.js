@@ -65,6 +65,7 @@ export default function priereJanazaReducer(state = initialState, action) {
         ...state,
         saving: false,
         list: state.list.map((p) => (p.id === action.payload.id ? action.payload : p)),
+        myPrieres: state.myPrieres.map((p) => (p.id === action.payload.id ? action.payload : p)),
       };
 
     case UPDATE_PRIERE_FAILURE:

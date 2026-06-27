@@ -23,6 +23,7 @@
       "title": "Ne manquez plus aucune <em>salat janaza</em>",
       "desc": "Salat Janaza vous notifie en temps réel des prières funéraires dans les mosquées près de chez vous. Recevez l'immense récompense du qirât.",
       "cta_prayers": "Voir les prières à venir",
+      "cta_declare": "Déclarer une janaza",
       "cta_register": "Créer un compte",
       "available_on": "Disponible sur",
       "screen_mosques": "Écran mosquées",
@@ -210,5 +211,19 @@
     "declare": "+ Déclarer une prière",
     "admin": "Administration",
     "logout": "Déconnexion"
+  },
+  "avis": {
+    "subtitle": "Annonce de décès",
+    "community_announce": "Nous vous annonçons avec tristesse le décès de :",
+    "community_brother": "Un frère de la communauté",
+    "community_sister": "Une sœur de la communauté",
+    "community_child": "Un enfant de la communauté",
+    "unknown": "(Inconnu(e))",
+    "prayer_label": "PRIÈRE",
+    "dua": "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn.",
+    "dua_f": "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn."
+  },
+  "mosquee": {
+    "add_autocomplete_hint": "Il n'est pas obligatoire de sélectionner une suggestion de l'autocomplétion. Vous pouvez saisir l'adresse manuellement."
   }
 }

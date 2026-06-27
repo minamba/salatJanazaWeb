@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
 import { createPriere, resetCreatePriere, SHOW_JANAZA_TOAST } from '../../lib/actions/priereJanazaActions';
-import { searchMosquees } from '../../lib/api/mosqueeApi';
+import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeApi';
 import AvisDecesCard from '../../components/AvisDecesCard';
 import { capitalizeFirst } from '../../lib/utils';
 
@@ -105,8 +106,237 @@ function CountrySearch({ value, onChange }) {
   );
 }
 
+// ── Mosque name helpers ───────────────────────────────────────────────────────
+function normalizeAccents(str) {
+  return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function hasValidMosquePrefix(text) {
+  const norm = normalizeAccents(text.trim());
+  return (
+    norm.startsWith('grande mosquee') ||
+    norm.startsWith('petite mosquee') ||
+    norm.startsWith('mosquee') ||
+    norm.startsWith('salle de priere') ||
+    norm.startsWith('centre')
+  );
+}
+
+function formatNomMosquee(text) {
+  if (!text) return text;
+  const norm = normalizeAccents(text);
+  if (norm.startsWith('grande mosquee')) {
+    const m = text.match(/^grande\s+mosqu[eéèê]{1,2}/i);
+    const rest = m ? text.slice(m[0].length) : text.slice(14);
+    return 'Grande Mosquée' + rest;
+  }
+  if (norm.startsWith('petite mosquee')) {
+    const m = text.match(/^petite\s+mosqu[eéèê]{1,2}/i);
+    const rest = m ? text.slice(m[0].length) : text.slice(14);
+    return 'Petite Mosquée' + rest;
+  }
+  if (norm.startsWith('mosquee')) {
+    const m = text.match(/^mosqu[eéèê]{1,2}/i);
+    const rest = m ? text.slice(m[0].length) : text.slice(7);
+    return 'Mosquée' + rest;
+  }
+  if (norm.startsWith('salle de priere')) {
+    const m = text.match(/^salle\s+de\s+pri[eèéê]re/i);
+    const rest = m ? text.slice(m[0].length) : text.slice(15);
+    return 'Salle de prière' + rest;
+  }
+  if (norm.startsWith('centre')) {
+    const m = text.match(/^centr[eé]/i);
+    const rest = m ? text.slice(m[0].length) : text.slice(6);
+    return 'Centre' + rest;
+  }
+  return text;
+}
+
+// ── Inline add mosque form ────────────────────────────────────────────────────
+function AddMosqueeForm({ onClose }) {
+  const { t } = useTranslation();
+  const [nom, setNom]               = useState('');
+  const [adresse, setAdresse]       = useState('');
+  const [coords, setCoords]         = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSugg, setLoadingSugg] = useState(false);
+  const [showSugg, setShowSugg]     = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
+  const [nomError, setNomError]     = useState('');
+  const [adresseError, setAdresseError] = useState('');
+  const timerRef   = useRef(null);
+  const addrRef    = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (addrRef.current && !addrRef.current.contains(e.target)) setShowSugg(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleAdresseChange = (e) => {
+    const val = e.target.value;
+    setAdresse(val);
+    setCoords(null);
+    setAdresseError('');
+    clearTimeout(timerRef.current);
+    if (val.trim().length < 3) { setSuggestions([]); setShowSugg(false); setLoadingSugg(false); return; }
+    setLoadingSugg(true);
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val.trim())}&format=json&limit=5`,
+          { headers: { 'Accept-Language': 'fr' } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSugg(true);
+      } catch { setSuggestions([]); }
+      finally { setLoadingSugg(false); }
+    }, 400);
+  };
+
+  const selectSuggestion = (item) => {
+    setAdresse(item.display_name);
+    setCoords({ lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
+    setSuggestions([]);
+    setShowSugg(false);
+    setAdresseError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    let hasError = false;
+
+    const formatted = formatNomMosquee(nom.trim());
+    if (!formatted || !hasValidMosquePrefix(formatted)) {
+      setNomError('Doit commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière ou Centre');
+      hasError = true;
+    } else {
+      setNomError('');
+    }
+
+    if (!adresse.trim()) {
+      setAdresseError('Veuillez saisir une adresse');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    setSaving(true);
+    try {
+      let finalCoords = coords;
+      if (!finalCoords) {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse.trim())}&format=json&limit=1`,
+          { headers: { 'Accept-Language': 'fr' } }
+        );
+        const data = await res.json();
+        if (!data.length) {
+          setAdresseError("Adresse introuvable. Précisez la ville ou le pays.");
+          setSaving(false);
+          return;
+        }
+        finalCoords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+      await createMosqueeSuggestion({
+        nom: formatted,
+        adresse: adresse.trim(),
+        latitude: finalCoords.lat,
+        longitude: finalCoords.lon,
+      });
+      setSubmitted(true);
+    } catch {
+      setAdresseError("Erreur lors de l'envoi de la demande. Réessayez.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="add-mosquee-form">
+        <div className="add-mosquee-form-header">
+          <span>Demande envoyée ✓</span>
+          <button type="button" className="add-mosquee-close" onClick={onClose}>✕</button>
+        </div>
+        <p style={{ fontSize: '0.85rem', color: '#444', lineHeight: 1.5, marginBottom: '1rem' }}>
+          Votre demande a bien été reçue et sera analysée par un administrateur. La mosquée sera disponible après validation. Merci pour votre contribution !
+        </p>
+        <button type="button" className="df-submit" onClick={onClose}>Fermer</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="add-mosquee-form">
+      <div className="add-mosquee-form-header">
+        <span>Ajouter une mosquée</span>
+        <button type="button" className="add-mosquee-close" onClick={onClose}>✕</button>
+      </div>
+
+      <div className="add-mosquee-field">
+        <label className="add-mosquee-label">Nom <span className="df-required">*</span></label>
+        <input
+          type="text"
+          value={nom}
+          onChange={(e) => { setNom(e.target.value); setNomError(''); }}
+          placeholder="Ex : Mosquée Al-Fath de Paris"
+          className="df-input"
+          autoComplete="off"
+        />
+        <p className="add-mosquee-hint">Commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière ou Centre</p>
+        {nomError && <p className="add-mosquee-error">{nomError}</p>}
+      </div>
+
+      <div className="add-mosquee-field">
+        <label className="add-mosquee-label">Adresse <span className="df-required">*</span></label>
+        <p className="add-mosquee-warning">
+          {t('mosquee.add_autocomplete_hint')}
+        </p>
+        <div style={{ position: 'relative' }} ref={addrRef}>
+          <input
+            type="text"
+            value={adresse}
+            onChange={handleAdresseChange}
+            onFocus={() => suggestions.length > 0 && setShowSugg(true)}
+            placeholder="Ex : 12 rue de la Paix, Paris"
+            className="df-input"
+            autoComplete="off"
+            style={loadingSugg ? { paddingRight: '2.5rem' } : {}}
+          />
+          {loadingSugg && <span className="mosque-search-spinner" style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />}
+          {showSugg && suggestions.length > 0 && (
+            <ul className="mosque-search-list">
+              {suggestions.map((s, i) => (
+                <li key={i} className="mosque-search-item" onMouseDown={() => selectSuggestion(s)}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.3 8 13 8 13s8-7.7 8-13a8 8 0 0 0-8-8z"/>
+                  </svg>
+                  <span>
+                    <span className="mosque-search-name">{s.display_name}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {coords && <p className="add-mosquee-coords">✓ Position confirmée</p>}
+        {adresseError && <p className="add-mosquee-error">{adresseError}</p>}
+      </div>
+
+      <button type="button" className="df-submit" onClick={handleSubmit} disabled={saving}>
+        {saving ? 'Ajout en cours…' : 'Ajouter la mosquée'}
+      </button>
+    </div>
+  );
+}
+
 // ── Mosque autocomplete (DB search — same as mobile) ─────────────────────────
-function MosqueeSearch({ onSelect, onClear }) {
+function MosqueeSearch({ onSelect, onClear, onAddRequested }) {
   const [query, setQuery]             = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading]         = useState(false);
@@ -198,10 +428,21 @@ function MosqueeSearch({ onSelect, onClear }) {
       )}
       {open && !loading && query.trim().length >= 2 && suggestions.length === 0 && (
         <div className="mosque-search-noresult">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          Mosquée non trouvée — elle n'est peut-être pas encore répertoriée.
+          <div className="mosque-search-noresult-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Mosquée non trouvée — elle n'est peut-être pas encore répertoriée.
+          </div>
+          {onAddRequested && (
+            <button
+              type="button"
+              className="mosque-search-add-btn"
+              onMouseDown={(e) => { e.preventDefault(); setOpen(false); onAddRequested(); }}
+            >
+              + Ajouter cette mosquée
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -225,6 +466,8 @@ function YearSelect({ value, onChange, placeholder }) {
 function PreviewModal({ data, onClose }) {
   const cardRef   = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [iosImg, setIosImg] = useState(null);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const capture = async () => {
     setBusy(true);
@@ -241,10 +484,16 @@ function PreviewModal({ data, onClose }) {
 
   const download = async () => {
     const canvas = await capture();
-    const link = document.createElement('a');
-    link.download = `avis-deces-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    if (isIOS) {
+      setIosImg(canvas.toDataURL('image/png'));
+    } else {
+      const link = document.createElement('a');
+      link.download = `avis-deces-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const share = async () => {
@@ -254,43 +503,57 @@ function PreviewModal({ data, onClose }) {
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Avis de décès - Salat al-Janaza' });
       } else {
-        // fallback: download
         const link = document.createElement('a');
         link.download = `avis-deces-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       }
     });
   };
 
   return (
-    <div className="preview-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="preview-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !iosImg) onClose(); }}>
       <div className="preview-modal">
         <div className="preview-modal-header">
-          <button className="preview-modal-back" onClick={onClose}>
+          <button className="preview-modal-back" onClick={iosImg ? () => setIosImg(null) : onClose}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Retour
+            {iosImg ? 'Retour au flyer' : 'Retour'}
           </button>
-          <span className="preview-modal-title">Aperçu</span>
-          <button className="preview-modal-share btn-sm" onClick={share} disabled={busy}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            Partager
-          </button>
+          <span className="preview-modal-title">{iosImg ? 'Enregistrer' : 'Aperçu'}</span>
+          {iosImg ? <span /> : (
+            <button className="preview-modal-share btn-sm" onClick={share} disabled={busy}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              Partager
+            </button>
+          )}
         </div>
 
-        <div className="preview-modal-body">
-          <AvisDecesCard ref={cardRef} data={data} />
-        </div>
+        {iosImg ? (
+          <div className="preview-modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
+            <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#555', margin: 0 }}>
+              Appuyez longuement sur l'image pour l'enregistrer dans votre galerie 📷
+            </p>
+            <img src={iosImg} alt="Avis de décès" style={{ maxWidth: '100%', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }} />
+          </div>
+        ) : (
+          <div className="preview-modal-body">
+            <AvisDecesCard ref={cardRef} data={data} />
+          </div>
+        )}
 
         <div className="preview-modal-footer">
-          <button className="btn btn-primary" onClick={download} disabled={busy}>
-            {busy ? 'Génération…' : '⬇ Télécharger en PNG'}
-          </button>
+          {!iosImg && (
+            <button className="btn btn-primary" onClick={download} disabled={busy}>
+              {busy ? 'Génération…' : '⬇ Télécharger en PNG'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -302,7 +565,7 @@ export default function DeclarePriereForm() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
-  const { createLoading, createSuccess, createError } = useSelector((s) => s.priereJanaza);
+  const { createLoading, createSuccess, createError, list: existingPrieres } = useSelector((s) => s.priereJanaza);
 
   const [form, setForm] = useState({
     nomDefunt:       '',
@@ -322,6 +585,7 @@ export default function DeclarePriereForm() {
   });
 
   const [selectedMosquee, setSelectedMosquee] = useState(null);
+  const [showAddMosquee,  setShowAddMosquee]  = useState(false);
   const [submitError,     setSubmitError]     = useState('');
   const [submitting,      setSubmitting]      = useState(false);
   const [showPreview,     setShowPreview]     = useState(false);
@@ -356,8 +620,8 @@ export default function DeclarePriereForm() {
 
   useEffect(() => () => dispatch(resetCreatePriere()), [dispatch]);
 
-  const handleMosqueeSelect = (osmData) => { setSelectedMosquee(osmData); setSubmitError(''); };
-  const handleMosqueeClear  = () => { setSelectedMosquee(null); setSubmitError(''); };
+  const handleMosqueeSelect = (osmData) => { setSelectedMosquee(osmData); setShowAddMosquee(false); setSubmitError(''); };
+  const handleMosqueeClear  = () => { setSelectedMosquee(null); setShowAddMosquee(false); setSubmitError(''); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -368,6 +632,35 @@ export default function DeclarePriereForm() {
     }
     setSubmitting(true);
     setSubmitError('');
+
+    // Duplicate detection
+    if (form.dateHeurePriere) {
+      const norm = (s) => (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      const proposedDate = new Date(form.dateHeurePriere);
+      const proposedDay = `${proposedDate.getFullYear()}-${proposedDate.getMonth()}-${proposedDate.getDate()}`;
+      const proposedHour = proposedDate.getHours();
+      const proposedMosqueeId = Number(selectedMosquee.id);
+
+      const sameHourConflict = existingPrieres.find((p) => {
+        if (!p.dateHeurePriere) return false;
+        const d = new Date(p.dateHeurePriere);
+        const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        return Number(p.mosqueeId) === proposedMosqueeId && day === proposedDay && d.getHours() === proposedHour;
+      });
+
+      if (sameHourConflict) {
+        const isExactDuplicate = !form.estAnonyme && form.nomDefunt?.trim()
+          && norm(sameHourConflict.nomDefunt) === norm(form.nomDefunt);
+        setSubmitError(
+          isExactDuplicate
+            ? 'Une janaza a déjà été déclarée pour cette personne dans cette mosquée à cette heure.'
+            : 'Une salat janaza est déjà programmée pour cette heure dans cette mosquée.'
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const mosqueeId = selectedMosquee.id;
     dispatch(createPriere({
       mosqueeId:        Number(mosqueeId),
@@ -435,7 +728,14 @@ export default function DeclarePriereForm() {
               </svg>
               Mosquée <span className="df-required">*</span>
             </div>
-            <MosqueeSearch onSelect={handleMosqueeSelect} onClear={handleMosqueeClear} />
+            <MosqueeSearch
+              onSelect={handleMosqueeSelect}
+              onClear={handleMosqueeClear}
+              onAddRequested={() => setShowAddMosquee(true)}
+            />
+            {showAddMosquee && (
+              <AddMosqueeForm onClose={() => setShowAddMosquee(false)} />
+            )}
             {selectedMosquee && (
               <div className="mosque-selected-badge">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -474,7 +774,6 @@ export default function DeclarePriereForm() {
               {GENRES.map((g) => (
                 <label key={g.value} className={`df-genre-pill${form.genre === g.value ? ' active' : ''}`}>
                   <input type="radio" name="genre" value={g.value} checked={form.genre === g.value} onChange={set('genre')} />
-                  <span className="df-genre-icon">{g.icon}</span>
                   {g.label}
                 </label>
               ))}
@@ -504,12 +803,6 @@ export default function DeclarePriereForm() {
 
           {/* ── Section : Avis de décès ── */}
           <div className="df-section df-section-avis">
-            <div className="df-section-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-              Annonce de décès
-            </div>
 
             {/* Toggle années */}
             <div className="toggle-row">
