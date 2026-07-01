@@ -1,4 +1,4 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
+import { call, put, select, takeLatest } from 'redux-saga/effects';
 import * as authApi from '../api/authApi';
 import * as utilisateurApi from '../api/utilisateurApi';
 import { authStorage } from '../storage/authStorage';
@@ -9,6 +9,7 @@ import {
   REGISTER_REQUEST, REGISTER_SUCCESS, REGISTER_FAILURE,
   FORGOT_PASSWORD_REQUEST, FORGOT_PASSWORD_SUCCESS, FORGOT_PASSWORD_FAILURE,
   RESET_PASSWORD_REQUEST, RESET_PASSWORD_SUCCESS, RESET_PASSWORD_FAILURE,
+  REFRESH_USER_PROFILE_REQUEST, REFRESH_USER_PROFILE_SUCCESS,
 } from '../actions/authActions';
 
 function parseJwtUser(accessToken) {
@@ -35,13 +36,15 @@ function* handleLoginSuccess(response) {
   if (refresh_token) authStorage.setRefreshToken(refresh_token);
 
   let dbId = null;
+  let canImportFlyer = false;
   if (user?.id) {
     try {
       const profileRes = yield call(utilisateurApi.getUtilisateurByIdentityId, user.id);
       dbId = profileRes.data?.id ?? null;
+      canImportFlyer = profileRes.data?.canImportFlyer ?? false;
     } catch {}
   }
-  const enrichedUser = user ? { ...user, dbId } : null;
+  const enrichedUser = user ? { ...user, dbId, canImportFlyer } : null;
   if (enrichedUser) authStorage.setUser(enrichedUser);
   yield put({ type: LOGIN_SUCCESS, payload: { token: access_token, user: enrichedUser } });
 }
@@ -113,6 +116,15 @@ function* resetPasswordSaga(action) {
   }
 }
 
+function* refreshUserProfileSaga() {
+  try {
+    const user = yield select(state => state.auth.user);
+    if (!user?.id) return;
+    const res = yield call(utilisateurApi.getUtilisateurByIdentityId, user.id);
+    yield put({ type: REFRESH_USER_PROFILE_SUCCESS, payload: res.data });
+  } catch {}
+}
+
 export default function* authSaga() {
   yield takeLatest(LOGIN_REQUEST, loginSaga);
   yield takeLatest(LOGIN_GOOGLE_REQUEST, loginGoogleSaga);
@@ -121,4 +133,5 @@ export default function* authSaga() {
   yield takeLatest(REGISTER_REQUEST, registerSaga);
   yield takeLatest(FORGOT_PASSWORD_REQUEST, forgotPasswordSaga);
   yield takeLatest(RESET_PASSWORD_REQUEST, resetPasswordSaga);
+  yield takeLatest(REFRESH_USER_PROFILE_REQUEST, refreshUserProfileSaga);
 }

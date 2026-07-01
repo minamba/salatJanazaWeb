@@ -7,6 +7,7 @@ import {
   FORGOT_PASSWORD_REQUEST, FORGOT_PASSWORD_SUCCESS, FORGOT_PASSWORD_FAILURE,
   RESET_PASSWORD_REQUEST, RESET_PASSWORD_SUCCESS, RESET_PASSWORD_FAILURE,
   AUTH_RESET, RESTORE_AUTH,
+  REFRESH_USER_PROFILE_SUCCESS,
 } from '../actions/authActions';
 
 const savedUser = authStorage.getUser();
@@ -89,6 +90,12 @@ export default function authReducer(state = initialState, action) {
         token: authStorage.getAccessToken(),
         isAuthenticated: !!(authStorage.getUser() && authStorage.getAccessToken()),
       };
+
+    case REFRESH_USER_PROFILE_SUCCESS: {
+      const updated = { ...state.user, canImportFlyer: action.payload.canImportFlyer };
+      authStorage.setUser(updated);
+      return { ...state, user: updated };
+    }
 
     default:
       return state;

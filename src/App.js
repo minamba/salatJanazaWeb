@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import { refreshUserProfile } from './lib/actions/authActions';
 import './App.css';
 
 import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast } from './components';
@@ -21,12 +23,26 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID ?? '';
 
 function AppRoutes() {
   const { i18n } = useTranslation();
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
 
   useEffect(() => {
     const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dir = dir;
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
+
+  // Rafraîchit canImportFlyer dès que l'onglet redevient visible ou toutes les 3 minutes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const refresh = () => { if (!document.hidden) dispatch(refreshUserProfile()); };
+    document.addEventListener('visibilitychange', refresh);
+    const interval = setInterval(refresh, 30 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, dispatch]);
 
   return (
     <BrowserRouter>

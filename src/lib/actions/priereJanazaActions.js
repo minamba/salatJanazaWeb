@@ -17,6 +17,9 @@ export const POLL_PRIERES_SUCCESS = 'POLL_PRIERES_SUCCESS';
 export const DISMISS_JANAZA_TOAST = 'DISMISS_JANAZA_TOAST';
 export const SHOW_JANAZA_TOAST    = 'SHOW_JANAZA_TOAST';
 export const MY_PRIERES_LOADED    = 'MY_PRIERES_LOADED';
+export const FETCH_PRIERES_PENDING_REQUEST = 'FETCH_PRIERES_PENDING_REQUEST';
+export const FETCH_PRIERES_PENDING_SUCCESS = 'FETCH_PRIERES_PENDING_SUCCESS';
+export const FETCH_PRIERES_PENDING_FAILURE = 'FETCH_PRIERES_PENDING_FAILURE';
 
 export const fetchPrieres = () => ({ type: FETCH_PRIERES_REQUEST });
 export const fetchPrieresUpcoming = () => ({ type: FETCH_PRIERES_UPCOMING_REQUEST });
@@ -29,3 +32,4 @@ export const resetCreatePriere = () => ({ type: CREATE_PRIERE_RESET });
 export const updatePriere = (id, data) => ({ type: UPDATE_PRIERE_REQUEST, payload: { id, data } });
 export const deletePriere = (id) => ({ type: DELETE_PRIERE_REQUEST, payload: id });
 export const dismissJanazaToast = (toastId) => ({ type: DISMISS_JANAZA_TOAST, payload: toastId });
+export const fetchPrieresEnAttente = () => ({ type: FETCH_PRIERES_PENDING_REQUEST });

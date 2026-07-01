@@ -15,6 +15,8 @@ export const RESET_PASSWORD_SUCCESS = 'RESET_PASSWORD_SUCCESS';
 export const RESET_PASSWORD_FAILURE = 'RESET_PASSWORD_FAILURE';
 export const AUTH_RESET = 'AUTH_RESET';
 export const RESTORE_AUTH = 'RESTORE_AUTH';
+export const REFRESH_USER_PROFILE_REQUEST = 'REFRESH_USER_PROFILE_REQUEST';
+export const REFRESH_USER_PROFILE_SUCCESS = 'REFRESH_USER_PROFILE_SUCCESS';
 
 export const login = (email, password) => ({ type: LOGIN_REQUEST, payload: { email, password } });
 export const loginWithGoogle = (accessToken) => ({ type: LOGIN_GOOGLE_REQUEST, payload: { accessToken } });
@@ -25,3 +27,4 @@ export const forgotPassword = (email) => ({ type: FORGOT_PASSWORD_REQUEST, paylo
 export const resetPassword = (data) => ({ type: RESET_PASSWORD_REQUEST, payload: data });
 export const resetAuth = () => ({ type: AUTH_RESET });
 export const restoreAuth = () => ({ type: RESTORE_AUTH });
+export const refreshUserProfile = () => ({ type: REFRESH_USER_PROFILE_REQUEST });

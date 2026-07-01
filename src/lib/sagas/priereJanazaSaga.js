@@ -8,6 +8,7 @@ import {
   UPDATE_PRIERE_REQUEST, UPDATE_PRIERE_SUCCESS, UPDATE_PRIERE_FAILURE,
   DELETE_PRIERE_REQUEST, DELETE_PRIERE_SUCCESS, DELETE_PRIERE_FAILURE,
   POLL_PRIERES_SUCCESS, MY_PRIERES_LOADED,
+  FETCH_PRIERES_PENDING_REQUEST, FETCH_PRIERES_PENDING_SUCCESS, FETCH_PRIERES_PENDING_FAILURE,
 } from '../actions/priereJanazaActions';
 
 function* fetchPrieresSaga() {
@@ -51,6 +52,12 @@ function* updatePriereSaga(action) {
     const { id, data } = action.payload;
     const res = yield call(priereApi.updatePriere, id, data);
     yield put({ type: UPDATE_PRIERE_SUCCESS, payload: res.data });
+    // Resynchronise la liste avec le serveur : l'heure modifiée peut faire sortir
+    // la prière du filtre "upcoming" ou changer son ordre.
+    yield put({ type: FETCH_PRIERES_UPCOMING_REQUEST });
+    const myPrieres = yield select((s) => s.priereJanaza.myPrieres);
+    const userId = myPrieres[0]?.utilisateurId;
+    if (userId) yield put({ type: FETCH_PRIERES_BY_USER_REQUEST, payload: userId });
   } catch (err) {
     yield put({ type: UPDATE_PRIERE_FAILURE, payload: err.response?.data?.message ?? 'Erreur mise à jour prière.' });
   }
@@ -60,6 +67,11 @@ function* deletePriereSaga(action) {
   try {
     yield call(priereApi.deletePriere, action.payload);
     yield put({ type: DELETE_PRIERE_SUCCESS, payload: action.payload });
+    // Resynchronise la liste pour garantir la cohérence avec le serveur.
+    yield put({ type: FETCH_PRIERES_UPCOMING_REQUEST });
+    const myPrieres = yield select((s) => s.priereJanaza.myPrieres);
+    const userId = myPrieres[0]?.utilisateurId;
+    if (userId) yield put({ type: FETCH_PRIERES_BY_USER_REQUEST, payload: userId });
   } catch {
     yield put({ type: DELETE_PRIERE_FAILURE, payload: 'Erreur suppression prière.' });
   }
@@ -85,6 +97,15 @@ function* pollPrieresSaga() {
   }
 }
 
+function* fetchPrieresEnAttenteSaga() {
+  try {
+    const res = yield call(priereApi.getPrieresEnAttente);
+    yield put({ type: FETCH_PRIERES_PENDING_SUCCESS, payload: res.data });
+  } catch {
+    yield put({ type: FETCH_PRIERES_PENDING_FAILURE });
+  }
+}
+
 export default function* priereJanazaSaga() {
   yield takeLatest(FETCH_PRIERES_REQUEST, fetchPrieresSaga);
   yield takeLatest(FETCH_PRIERES_UPCOMING_REQUEST, fetchPrieresUpcomingSaga);
@@ -92,5 +113,6 @@ export default function* priereJanazaSaga() {
   yield takeLatest(CREATE_PRIERE_REQUEST, createPriereSaga);
   yield takeLatest(UPDATE_PRIERE_REQUEST, updatePriereSaga);
   yield takeLatest(DELETE_PRIERE_REQUEST, deletePriereSaga);
+  yield takeLatest(FETCH_PRIERES_PENDING_REQUEST, fetchPrieresEnAttenteSaga);
   yield fork(pollPrieresSaga);
 }

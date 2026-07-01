@@ -225,5 +225,21 @@
   },
   "mosquee": {
     "add_autocomplete_hint": "Il n'est pas obligatoire de sélectionner une suggestion de l'autocomplétion. Vous pouvez saisir l'adresse manuellement."
+  },
+  "declare": {
+    "import_flyer": "Importer une janaza",
+    "import_hint": "Uniquement les fichiers PNG et JPG sont acceptés.",
+    "import_processing": "Image envoyée. Analyse en cours par l'IA...",
+    "import_processing_short": "Envoi en cours…",
+    "import_success": "La janaza a été importée avec succès.",
+    "import_error_generic": "Une erreur est survenue lors de l'importation.",
+    "import_format_body": "Seuls les fichiers PNG et JPG sont acceptés.",
+    "import_login_required": "Vous devez être connecté pour importer une janaza.",
+    "import_timeout": "Le délai d'attente est dépassé. Vérifiez vos déclarations plus tard.",
+    "import_image_quality": "L'image est de mauvaise qualité ou illisible. Veuillez fournir une photo plus nette pour que l'IA puisse lire l'adresse de la mosquée.",
+    "import_verify_title": "Vérifiez les informations",
+    "import_verify_body": "L'IA a extrait les informations du flyer. Elle n'est pas infaillible : vérifiez que toutes les informations sont correctes.\n\nPour les modifier, rendez-vous dans la rubrique « Historique des déclarations » de votre profil.",
+    "import_verify_time_unknown": "⚠️ L'horaire de la prière est à 00h00 — l'IA n'a pas pu extraire cette information. Veuillez la renseigner manuellement.",
+    "import_verify_close": "J'ai compris"
   }
 }

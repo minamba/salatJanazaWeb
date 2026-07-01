@@ -1,6 +1,7 @@
 import { apiClient } from './axiosConfig';
 
 export const getPrieres = () => apiClient.get('/api/prierejanaza');
+export const getPrieresEnAttente = () => apiClient.get('/api/prierejanaza/en-attente');
 export const getPrieresUpcoming = () => apiClient.get('/api/prierejanaza/upcoming');
 export const getPriereById = (id) => apiClient.get(`/api/prierejanaza/${id}`);
 export const getPrieresByMosquee = (mosqueeId) =>

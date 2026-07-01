@@ -70,6 +70,7 @@ function* validerMosqueeSaga(action) {
   try {
     const res = yield call(mosqueeApi.validerMosquee, action.payload);
     yield put({ type: VALIDER_MOSQUEE_SUCCESS, payload: res.data });
+    yield put({ type: FETCH_PENDING_MOSQUEES_REQUEST });
   } catch {
     yield put({ type: VALIDER_MOSQUEE_FAILURE, payload: 'Erreur validation mosquée.' });
   }

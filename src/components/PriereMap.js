@@ -84,6 +84,14 @@ function ZoomTracker({ onZoom }) {
   return null;
 }
 
+// Détecte le pays de l'utilisateur à partir des bounding boxes locales — pas de requête réseau.
+function detectCountry(lat, lon) {
+  for (const [cc, [[s, w], [n, e]]] of Object.entries(COUNTRY_BOUNDS)) {
+    if (lat >= s && lat <= n && lon >= w && lon <= e) return cc;
+  }
+  return null;
+}
+
 // Country zoom: compute center + zoom from bounding box size
 // so the country fills the screen tightly regardless of map dimensions.
 function applyCountryView(map, countryBounds) {
@@ -93,7 +101,7 @@ function applyCountryView(map, countryBounds) {
   //   ~30° → zoom 5  |  ~15° → zoom 6  |  ~7° → zoom 7  |  ~3° → zoom 8
   const maxSpan = Math.max(n - s, e - w);
   const zoom = Math.max(5, Math.min(8, Math.round(6.9 - Math.log2(maxSpan / 8))));
-  map.setView(center, zoom, { animate: true });
+  map.setView(center, zoom); // pas d'animation sur les grands déplacements
 }
 
 // ─── Apply the right view for the current mode ───────────────────────────────
@@ -104,12 +112,12 @@ function MapViewController({ mode, userPos, countryBounds, allPoints }) {
     if (mode === 'proximity') {
       if (userPos) map.setView(userPos, 14, { animate: true });
     } else if (mode === 'country') {
-      if (countryBounds) applyCountryView(map, countryBounds);
-      // else: wait — the countryBounds effect below will fire when it's ready
+      // Fallback immédiat sur la France si countryBounds pas encore connu
+      applyCountryView(map, countryBounds ?? COUNTRY_BOUNDS.fr);
     } else {
-      // 'all'
+      // 'all' — pas d'animation : fitBounds animé sur grande distance est très lent
       if (allPoints.length > 1) {
-        map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40], animate: true });
+        map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40] });
       } else if (allPoints.length === 1) {
         map.setView(allPoints[0], 11);
       }
@@ -117,13 +125,13 @@ function MapViewController({ mode, userPos, countryBounds, allPoints }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // When countryBounds arrives async, apply if still in country mode
+  // Quand countryBounds arrive (après géoloc), mettre à jour si on est toujours en mode country
   useEffect(() => {
     if (countryBounds && mode === 'country') applyCountryView(map, countryBounds);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countryBounds]);
 
-  // When userPos arrives async, apply if still in proximity mode
+  // Quand userPos arrive (après géoloc), centrer si on est toujours en mode proximity
   useEffect(() => {
     if (userPos && mode === 'proximity') map.setView(userPos, 14, { animate: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,34 +390,13 @@ export default function PriereMap({ prieres, mode, externalUserPos, currentUserI
 
   const handleZoom = useCallback((z) => setZoom(z), []);
 
-  // When parent provides a GPS position (triggered by user gesture), use it
+  // Quand le parent fournit une position GPS, détecter le pays localement (pas de requête réseau)
   useEffect(() => {
     if (!externalUserPos) return;
     const [lat, lon] = externalUserPos;
     setUserPos(externalUserPos);
-
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`)
-      .then((r) => r.json())
-      .then((data) => {
-        const cc = data?.address?.country_code?.toLowerCase();
-        if (cc && COUNTRY_BOUNDS[cc]) {
-          setCountryBounds(COUNTRY_BOUNDS[cc]);
-        } else if (Array.isArray(data.boundingbox) && data.boundingbox.length === 4) {
-          const [s, n, w, e] = data.boundingbox.map(Number);
-          const latSpan = n - s;
-          const lonSpan = Math.abs(e - w);
-          if (latSpan > 0.5 && latSpan < 40 && lonSpan > 0.5 && lonSpan < 60) {
-            setCountryBounds([[s, w], [n, e]]);
-          } else {
-            setCountryBounds([[lat - 4, lon - 5], [lat + 4, lon + 5]]);
-          }
-        } else {
-          setCountryBounds([[lat - 4, lon - 5], [lat + 4, lon + 5]]);
-        }
-      })
-      .catch(() => {
-        setCountryBounds([[lat - 4, lon - 5], [lat + 4, lon + 5]]);
-      });
+    const cc = detectCountry(lat, lon);
+    setCountryBounds(cc ? COUNTRY_BOUNDS[cc] : [[lat - 4, lon - 5], [lat + 4, lon + 5]]);
   }, [externalUserPos]);
 
   const groups = useMemo(() => {

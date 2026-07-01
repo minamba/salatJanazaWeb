@@ -5,12 +5,15 @@ import {
   UPDATE_PRIERE_REQUEST, UPDATE_PRIERE_SUCCESS, UPDATE_PRIERE_FAILURE,
   DELETE_PRIERE_SUCCESS, DELETE_PRIERE_FAILURE,
   POLL_PRIERES_SUCCESS, DISMISS_JANAZA_TOAST, SHOW_JANAZA_TOAST, MY_PRIERES_LOADED,
+  FETCH_PRIERES_PENDING_REQUEST, FETCH_PRIERES_PENDING_SUCCESS, FETCH_PRIERES_PENDING_FAILURE,
 } from '../actions/priereJanazaActions';
 
 const initialState = {
   list: [],
   myPrieres: [],
   myPrieresLoading: false,
+  pendingList: [],
+  pendingLoading: false,
   loading: false,
   error: null,
   createLoading: false,
@@ -38,6 +41,13 @@ export default function priereJanazaReducer(state = initialState, action) {
 
     case FETCH_PRIERES_FAILURE:
       return { ...state, loading: false, error: action.payload };
+
+    case FETCH_PRIERES_PENDING_REQUEST:
+      return { ...state, pendingLoading: true };
+    case FETCH_PRIERES_PENDING_SUCCESS:
+      return { ...state, pendingLoading: false, pendingList: action.payload };
+    case FETCH_PRIERES_PENDING_FAILURE:
+      return { ...state, pendingLoading: false };
 
     case CREATE_PRIERE_REQUEST:
       return { ...state, createLoading: true, createSuccess: false, createError: null };

@@ -23,6 +23,7 @@ export function buildInitialForm(priere) {
     genre:            normalizeGenre(priere.genre),
     mosqueeId:        priere.mosqueeId ?? '',
     dateHeurePriere:  priere.dateHeurePriere ? toLocalDatetimeInput(priere.dateHeurePriere) : '',
+    noYearInfo:       !(priere.anneeNaissance || priere.anneeDeces),
     anneeNaissance:   priere.anneeNaissance ?? '',
     anneeDeces:       priere.anneeDeces ?? '',
     commentaire:      priere.commentaire ?? '',
@@ -38,8 +39,8 @@ export function buildPayload(form) {
     genre:            form.genre || null,
     mosqueeId:        form.mosqueeId ? parseInt(form.mosqueeId) : null,
     dateHeurePriere:  form.dateHeurePriere ? toUTCISOString(form.dateHeurePriere) : null,
-    anneeNaissance:   form.anneeNaissance ? parseInt(form.anneeNaissance) : null,
-    anneeDeces:       form.anneeDeces ? parseInt(form.anneeDeces) : null,
+    anneeNaissance:   (!form.noYearInfo && form.anneeNaissance) ? parseInt(form.anneeNaissance) : null,
+    anneeDeces:       (!form.noYearInfo && form.anneeDeces) ? parseInt(form.anneeDeces) : null,
     commentaire:      form.commentaire || null,
     paysEnterrement:  form.paysEnterrement || null,
     villeEnterrement: form.villeEnterrement || null,
@@ -106,30 +107,53 @@ export default function EditPriereModal({ priere, form, setForm, onClose, onSubm
                 required
               />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Année de naissance</label>
-                <input
-                  type="number"
-                  min="1900"
-                  max="2100"
-                  value={form.anneeNaissance}
-                  onChange={(e) => setForm((f) => ({ ...f, anneeNaissance: e.target.value }))}
-                  placeholder="ex: 1950"
-                />
+            <div className="toggle-row" style={{ marginBottom: '0.75rem' }}>
+              <div>
+                <div className="toggle-label">Années de naissance et de décès</div>
+                <div className="toggle-sub">
+                  {form.noYearInfo ? 'Aucune information renseignée' : 'Informations disponibles'}
+                </div>
               </div>
-              <div className="form-group">
-                <label>Année de décès</label>
+              <label className="toggle-switch">
                 <input
-                  type="number"
-                  min="1900"
-                  max="2100"
-                  value={form.anneeDeces}
-                  onChange={(e) => setForm((f) => ({ ...f, anneeDeces: e.target.value }))}
-                  placeholder="ex: 2024"
+                  type="checkbox"
+                  checked={!form.noYearInfo}
+                  onChange={(e) => setForm((f) => ({
+                    ...f,
+                    noYearInfo: !e.target.checked,
+                    anneeNaissance: !e.target.checked ? '' : f.anneeNaissance,
+                    anneeDeces: !e.target.checked ? '' : f.anneeDeces,
+                  }))}
                 />
-              </div>
+                <span className="toggle-knob" />
+              </label>
             </div>
+            {!form.noYearInfo && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Année de naissance</label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max="2100"
+                    value={form.anneeNaissance}
+                    onChange={(e) => setForm((f) => ({ ...f, anneeNaissance: e.target.value }))}
+                    placeholder="ex : 1950"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Année de décès</label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max="2100"
+                    value={form.anneeDeces}
+                    onChange={(e) => setForm((f) => ({ ...f, anneeDeces: e.target.value }))}
+                    placeholder="ex : 2024"
+                  />
+                </div>
+              </div>
+            )}
             <div className="form-group">
               <label>Commentaire</label>
               <textarea

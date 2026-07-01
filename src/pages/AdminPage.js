@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee, fetchPendingMosquees, validerMosquee as validerMosqueeReq } from '../lib/actions/mosqueeActions';
-import { fetchPrieres, deletePriere, updatePriere } from '../lib/actions/priereJanazaActions';
+import { fetchPrieres, deletePriere, updatePriere, fetchPrieresEnAttente } from '../lib/actions/priereJanazaActions';
 import {
   fetchUtilisateurs,
   createUtilisateur,
   updateUtilisateur,
   deleteUtilisateur,
 } from '../lib/actions/utilisateurActions';
+import { apiClient } from '../lib/api/axiosConfig';
 
 // ─── Modal shell ─────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
@@ -71,10 +72,11 @@ function toUTCISOString(localStr) {
 export default function AdminPage() {
   const dispatch = useDispatch();
   const { list: mosquees, pendingList: pendingMosquees, loading: mLoading, pendingLoading: mPendingLoading } = useSelector((s) => s.mosquee);
-  const { list: prieres, loading: pLoading, saving: pSaving } = useSelector((s) => s.priereJanaza);
+  const { list: prieres, pendingList: prieresEnAttente, pendingLoading: pPendingLoading, loading: pLoading, saving: pSaving } = useSelector((s) => s.priereJanaza);
   const { list: utilisateurs, loading: uLoading, saving: uSaving, saveError: uSaveError } = useSelector((s) => s.utilisateur);
 
   const [tab, setTab] = useState('prieres');
+  const [prieresSubTab, setPrieresSubTab] = useState('toutes');
   const [mosqueeSubTab, setMosqueeSubTab] = useState('enregistrees');
   const [selectedPending, setSelectedPending] = useState(new Set());
 
@@ -91,6 +93,7 @@ export default function AdminPage() {
   const [searchPriereText, setSearchPriereText] = useState('');
   const [searchPriereMosquee, setSearchPriereMosquee] = useState('');
   const [searchPriereDate, setSearchPriereDate] = useState('');
+  const [searchPriereCreationDate, setSearchPriereCreationDate] = useState('');
   const [searchMosquee, setSearchMosquee] = useState('');
   const [searchUser, setSearchUser] = useState('');
 
@@ -115,6 +118,11 @@ export default function AdminPage() {
   const [createUserForm, setCreateUserForm] = useState({ email: '', password: '', prenom: '', nom: '', role: 'User', telephone: '' });
   const [editUserForm, setEditUserForm] = useState({});
 
+  // ── Import permission states ──────────────────────────────────────────────────
+  const [importPermSearch, setImportPermSearch] = useState('');
+  const [importPermLoading, setImportPermLoading] = useState(false);
+  const [importPermUsers, setImportPermUsers] = useState(null); // null = use redux, array = local override
+
   useEffect(() => {
     dispatch(fetchMosquees());
     dispatch(fetchPrieres());
@@ -128,6 +136,12 @@ export default function AdminPage() {
     }
   }, [tab, mosqueeSubTab, dispatch]);
 
+  useEffect(() => {
+    if (tab === 'prieres' && prieresSubTab === 'enattente') {
+      dispatch(fetchPrieresEnAttente());
+    }
+  }, [tab, prieresSubTab, dispatch]);
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const getDeclarantName = useCallback((utilisateurId) => {
     if (!utilisateurId) return '—';
@@ -138,6 +152,7 @@ export default function AdminPage() {
 
   const fmtDate = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
   const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+  const toLocalISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   // ── Filtered lists ───────────────────────────────────────────────────────────
   const filteredPrieres = useMemo(() => {
@@ -152,12 +167,16 @@ export default function AdminPage() {
         if (!normalize(p.mosqueeNom).includes(normalize(searchPriereMosquee))) return false;
       }
       if (searchPriereDate) {
-        const priereDay = p.dateHeurePriere ? p.dateHeurePriere.substring(0, 10) : '';
+        const priereDay = p.dateHeurePriere ? toLocalISODate(new Date(p.dateHeurePriere)) : '';
         if (priereDay !== searchPriereDate) return false;
       }
+      if (searchPriereCreationDate) {
+        const creationDay = p.dateCreation ? toLocalISODate(new Date(p.dateCreation)) : '';
+        if (creationDay !== searchPriereCreationDate) return false;
+      }
       return true;
-    });
-  }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, getDeclarantName]);
+    }).sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation));
+  }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, searchPriereCreationDate, getDeclarantName]);
 
   const filteredMosquees = useMemo(() => {
     if (!searchMosquee) return mosquees;
@@ -176,6 +195,19 @@ export default function AdminPage() {
       normalize(u.email).includes(q)
     );
   }, [utilisateurs, searchUser]);
+
+  const baseImportUsers = importPermUsers ?? utilisateurs ?? [];
+  const filteredImportPermUsers = useMemo(() => {
+    const nonAdmins = baseImportUsers.filter((u) => u._role !== 'Admin' && u._role !== 'SuperAdmin');
+    if (!importPermSearch) return nonAdmins;
+    const q = normalize(importPermSearch);
+    return nonAdmins.filter((u) =>
+      normalize(u.prenom).includes(q) ||
+      normalize(u.nom).includes(q) ||
+      normalize(u.email).includes(q)
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseImportUsers, importPermSearch]);
 
   // ── Mosque handlers ──────────────────────────────────────────────────────────
   const handleAddMosquee = async (e) => {
@@ -362,6 +394,60 @@ export default function AdminPage() {
     showNotif(`Toutes les ${count} mosquées en attente ont été refusées et supprimées.`, 'error');
   };
 
+  // ── Import permission handlers ────────────────────────────────────────────────
+  const handleToggleImportPerm = async (userId, newValue) => {
+    setImportPermUsers((prev) => {
+      const base = prev ?? utilisateurs;
+      return base.map((u) => u.id === userId ? { ...u, canImportFlyer: newValue } : u);
+    });
+    try {
+      const res = await apiClient.put(`/api/utilisateur/${userId}/import-flyer`, { canImportFlyer: newValue });
+      console.log('[Admin] import-flyer updated →', res.data?.canImportFlyer, 'for user', userId);
+      showNotif(newValue ? 'Permission d\'import activée.' : 'Permission d\'import retirée.', 'success');
+    } catch (err) {
+      console.error('[Admin] import-flyer error:', err?.response?.status, err?.response?.data);
+      setImportPermUsers((prev) => {
+        const base = prev ?? utilisateurs;
+        return base.map((u) => u.id === userId ? { ...u, canImportFlyer: !newValue } : u);
+      });
+      showNotif(err?.response?.data?.error ?? 'Impossible de modifier la permission.', 'error');
+    }
+  };
+
+  const handleAutoriserTousImport = async () => {
+    if (!window.confirm(`Autoriser tous les utilisateurs à importer des flyers ?`)) return;
+    setImportPermLoading(true);
+    try {
+      await apiClient.put('/api/utilisateur/import-flyer/bulk', { canImportFlyer: true });
+      setImportPermUsers((prev) => {
+        const base = prev ?? utilisateurs;
+        return base.map((u) => u._role === 'Admin' || u._role === 'SuperAdmin' ? u : { ...u, canImportFlyer: true });
+      });
+      showNotif('✓ Tous les utilisateurs ont été autorisés à importer.');
+    } catch {
+      showNotif('Impossible de modifier les permissions.', 'error');
+    } finally {
+      setImportPermLoading(false);
+    }
+  };
+
+  const handleRefuserTousImport = async () => {
+    if (!window.confirm(`Révoquer les droits d'import de tous les utilisateurs ?`)) return;
+    setImportPermLoading(true);
+    try {
+      await apiClient.put('/api/utilisateur/import-flyer/bulk', { canImportFlyer: false });
+      setImportPermUsers((prev) => {
+        const base = prev ?? utilisateurs;
+        return base.map((u) => u._role === 'Admin' || u._role === 'SuperAdmin' ? u : { ...u, canImportFlyer: false });
+      });
+      showNotif('Les droits d\'import ont été révoqués pour tous les utilisateurs.', 'error');
+    } catch {
+      showNotif('Impossible de modifier les permissions.', 'error');
+    } finally {
+      setImportPermLoading(false);
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="page">
@@ -383,36 +469,62 @@ export default function AdminPage() {
           <button className={`btn ${tab === 'utilisateurs' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('utilisateurs')}>
             Utilisateurs ({utilisateurs.length})
           </button>
+          <button className={`btn ${tab === 'importation' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('importation')}>
+            Importation
+          </button>
         </div>
 
         {/* ── PRIERES ── */}
         {tab === 'prieres' && (
-          <div className="admin-table-wrap">
+          <div>
+            <div className="tab-buttons" style={{ marginBottom: '1.5rem' }}>
+              <button
+                className={`btn ${prieresSubTab === 'toutes' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setPrieresSubTab('toutes')}
+              >
+                Toutes ({prieres.length})
+              </button>
+              <button
+                className={`btn ${prieresSubTab === 'enattente' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setPrieresSubTab('enattente')}
+              >
+                En attente {prieresEnAttente.length > 0 ? `(${prieresEnAttente.length})` : ''}
+              </button>
+            </div>
+
+          {prieresSubTab === 'toutes' && <div className="admin-table-wrap">
             <h2>Gestion des prières</h2>
 
-            <div className="admin-search-bar">
-              <SearchBar
-                value={searchPriereText}
-                onChange={setSearchPriereText}
-                placeholder="Nom du défunt ou déclarant…"
-              />
-              <SearchBar
-                value={searchPriereMosquee}
-                onChange={setSearchPriereMosquee}
-                placeholder="Mosquée…"
-              />
-              <div className="admin-search admin-search-date">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <input
-                  type="date"
-                  value={searchPriereDate}
-                  onChange={(e) => setSearchPriereDate(e.target.value)}
+            <div className="admin-filters">
+              <div className="admin-search-bar">
+                <SearchBar
+                  value={searchPriereText}
+                  onChange={setSearchPriereText}
+                  placeholder="Nom du défunt ou déclarant…"
                 />
-                {searchPriereDate && (
-                  <button className="admin-search-clear" onClick={() => setSearchPriereDate('')} aria-label="Effacer">✕</button>
-                )}
+                <SearchBar
+                  value={searchPriereMosquee}
+                  onChange={setSearchPriereMosquee}
+                  placeholder="Mosquée…"
+                />
+              </div>
+              <div className="admin-search-bar">
+                <label className="admin-date-filter">
+                  <span>Date de prière</span>
+                  <div className="admin-search admin-search-date">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <input type="date" value={searchPriereDate} onChange={(e) => setSearchPriereDate(e.target.value)} />
+                    {searchPriereDate && <button className="admin-search-clear" onClick={() => setSearchPriereDate('')}>✕</button>}
+                  </div>
+                </label>
+                <label className="admin-date-filter">
+                  <span>Date de création</span>
+                  <div className="admin-search admin-search-date">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <input type="date" value={searchPriereCreationDate} onChange={(e) => setSearchPriereCreationDate(e.target.value)} />
+                    {searchPriereCreationDate && <button className="admin-search-clear" onClick={() => setSearchPriereCreationDate('')}>✕</button>}
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -455,12 +567,11 @@ export default function AdminPage() {
                       <td>{fmtDateOnly(p.dateCreation)}</td>
                       <td><span className={`badge badge-${p.statut?.toLowerCase()}`}>{p.statut}</span></td>
                       <td className="admin-actions">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEditPriere(p)}>Modifier</button>
-                        <button
-                          className="btn btn-danger-sm"
-                          onClick={() => window.confirm('Supprimer cette prière ?') && dispatch(deletePriere(p.id))}
-                        >
-                          Supprimer
+                        <button className="btn-icon btn-icon-edit" title="Modifier" onClick={() => openEditPriere(p)}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button className="btn-icon btn-icon-delete" title="Supprimer" onClick={() => window.confirm('Supprimer cette prière ?') && dispatch(deletePriere(p.id))}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                       </td>
                     </tr>
@@ -471,6 +582,50 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>}
+
+          {prieresSubTab === 'enattente' && (
+            <div className="admin-table-wrap">
+              <h2>Prières en attente de validation du lieu</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                Ces déclarations sont en attente car le lieu de prière associé n'a pas encore été validé. Validez le lieu dans l'onglet <strong>Mosquées → En attente</strong> pour les publier automatiquement.
+              </p>
+              {pPendingLoading && <p className="text-muted">Chargement...</p>}
+              <div className="admin-table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Défunt</th>
+                      <th>Genre</th>
+                      <th>Lieu (en attente)</th>
+                      <th>Date prière</th>
+                      <th>Déclarant</th>
+                      <th>Créé le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prieresEnAttente.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.id}</td>
+                        <td>{p.estAnonyme ? <em>Anonyme</em> : (p.nomDefunt ?? '—')}</td>
+                        <td>{p.genre ?? '—'}</td>
+                        <td>
+                          <span style={{ color: 'var(--warning, #b45309)', fontWeight: 500 }}>{p.mosqueeNom ?? '—'}</span>
+                        </td>
+                        <td>{fmtDate(p.dateHeurePriere)}</td>
+                        <td>{getDeclarantName(p.utilisateurId)}</td>
+                        <td>{fmtDateOnly(p.dateCreation)}</td>
+                      </tr>
+                    ))}
+                    {!pPendingLoading && prieresEnAttente.length === 0 && (
+                      <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucune prière en attente</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           </div>
         )}
 
@@ -562,12 +717,11 @@ export default function AdminPage() {
                           <td>{m.latitude?.toFixed(4)}</td>
                           <td>{m.longitude?.toFixed(4)}</td>
                           <td className="admin-actions">
-                            <button className="btn btn-sm btn-outline" onClick={() => openEditMosquee(m)}>Modifier</button>
-                            <button
-                              className="btn btn-danger-sm"
-                              onClick={() => window.confirm('Supprimer cette mosquée ?') && dispatch(deleteMosquee(m.id))}
-                            >
-                              Supprimer
+                            <button className="btn-icon btn-icon-edit" title="Modifier" onClick={() => openEditMosquee(m)}>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button className="btn-icon btn-icon-delete" title="Supprimer" onClick={() => window.confirm('Supprimer cette mosquée ?') && dispatch(deleteMosquee(m.id))}>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                             </button>
                           </td>
                         </tr>
@@ -716,18 +870,97 @@ export default function AdminPage() {
                       <td>{u.telephone || '—'}</td>
                       <td>{fmtDateOnly(u.dateInscription)}</td>
                       <td className="admin-actions">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEditUser(u)}>Modifier</button>
-                        <button
-                          className="btn btn-danger-sm"
-                          onClick={() => window.confirm(`Supprimer ${u.prenom} ${u.nom} ? Cette action est irréversible.`) && dispatch(deleteUtilisateur(u.id))}
-                        >
-                          Supprimer
+                        <button className="btn-icon btn-icon-edit" title="Modifier" onClick={() => openEditUser(u)}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button className="btn-icon btn-icon-delete" title="Supprimer" onClick={() => window.confirm(`Supprimer ${u.prenom} ${u.nom} ? Cette action est irréversible.`) && dispatch(deleteUtilisateur(u.id))}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                       </td>
                     </tr>
                   ))}
                   {filteredUsers.length === 0 && (
                     <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun résultat</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── IMPORTATION ── */}
+        {tab === 'importation' && (
+          <div>
+            <h2>Permissions d'importation de flyers</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              Gérez quels utilisateurs ont accès au bouton "Importer une janaza" sur l'application mobile et le site web.
+              Les administrateurs ont toujours accès, indépendamment de ce paramètre.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleAutoriserTousImport}
+                disabled={importPermLoading}
+              >
+                {importPermLoading ? '...' : '✓ Autoriser tous'}
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleRefuserTousImport}
+                disabled={importPermLoading}
+              >
+                {importPermLoading ? '...' : '✕ Révoquer tous'}
+              </button>
+            </div>
+
+            <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
+              <SearchBar
+                value={importPermSearch}
+                onChange={setImportPermSearch}
+                placeholder="Rechercher par prénom, nom ou email…"
+              />
+            </div>
+
+            <p className="admin-count">
+              {filteredImportPermUsers.length} utilisateur{filteredImportPermUsers.length !== 1 ? 's' : ''}
+            </p>
+
+            {uLoading && <p className="text-muted">Chargement...</p>}
+            <div className="admin-table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Prénom</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th style={{ textAlign: 'center' }}>Peut importer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredImportPermUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.prenom ?? '—'}</td>
+                      <td>{u.nom ?? '—'}</td>
+                      <td>{u.email}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <label className="toggle-switch" style={{ display: 'inline-flex' }}>
+                          <input
+                            type="checkbox"
+                            checked={u.canImportFlyer ?? false}
+                            onChange={(e) => handleToggleImportPerm(u.id, e.target.checked)}
+                          />
+                          <span className="toggle-knob" />
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredImportPermUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                        Aucun utilisateur
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

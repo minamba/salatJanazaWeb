@@ -7,6 +7,7 @@ import { createPriere, resetCreatePriere, SHOW_JANAZA_TOAST } from '../../lib/ac
 import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeApi';
 import AvisDecesCard from '../../components/AvisDecesCard';
 import { capitalizeFirst } from '../../lib/utils';
+import { apiClient } from '../../lib/api/axiosConfig';
 
 // ── Country list ──────────────────────────────────────────────────────────────
 const PAYS = [
@@ -288,7 +289,7 @@ function AddMosqueeForm({ onClose }) {
           className="df-input"
           autoComplete="off"
         />
-        <p className="add-mosquee-hint">Commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière ou Centre</p>
+        <p className="add-mosquee-hint">Commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière, Salle, Centre, Funérarium, Hôpital, Cimetière ou Clinique</p>
         {nomError && <p className="add-mosquee-error">{nomError}</p>}
       </div>
 
@@ -562,6 +563,7 @@ function PreviewModal({ data, onClose }) {
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 export default function DeclarePriereForm() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
@@ -589,6 +591,13 @@ export default function DeclarePriereForm() {
   const [submitError,     setSubmitError]     = useState('');
   const [submitting,      setSubmitting]      = useState(false);
   const [showPreview,     setShowPreview]     = useState(false);
+  const [importLoading,     setImportLoading]     = useState(false);
+  const [importStatus,      setImportStatus]      = useState(null); // null | 'pending' | 'success' | 'error'
+  const [importMessage,     setImportMessage]     = useState('');
+  const [showImportVerify,   setShowImportVerify]   = useState(false);
+  const [importTimeUnknown,  setImportTimeUnknown]  = useState(false);
+  const importFileRef = useRef(null);
+  const importPollRef = useRef(null);
 
   const set = (field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -696,6 +705,77 @@ export default function DeclarePriereForm() {
 
   const canPreview = !!(form.dateHeurePriere && (form.nomDefunt || form.estAnonyme));
   const busy = submitting || createLoading;
+
+  const handleImportFlyer = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      setImportStatus('error');
+      setImportMessage(t('declare.import_format_body'));
+      return;
+    }
+    if (!user?.dbId) {
+      setImportStatus('error');
+      setImportMessage(t('declare.import_login_required'));
+      return;
+    }
+
+    setImportLoading(true);
+    setImportStatus('pending');
+    setImportMessage(t('declare.import_processing'));
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('utilisateurId', String(user.dbId));
+
+      const uploadResp = await apiClient.post('/api/flyer/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      });
+      const { importToken } = uploadResp.data;
+
+      if (importPollRef.current) clearInterval(importPollRef.current);
+      importPollRef.current = setInterval(async () => {
+        try {
+          const statusResp = await apiClient.get(`/api/flyer/import-status/${importToken}`);
+          const { status: s, message, errorCode, timeUnknown } = statusResp.data;
+          if (s === 'success') {
+            clearInterval(importPollRef.current);
+            importPollRef.current = null;
+            setImportLoading(false);
+            setImportStatus('success');
+            setImportMessage(t('declare.import_success'));
+            setImportTimeUnknown(!!timeUnknown);
+            setShowImportVerify(true);
+          } else if (s === 'error') {
+            clearInterval(importPollRef.current);
+            importPollRef.current = null;
+            setImportLoading(false);
+            setImportStatus('error');
+            setImportMessage(errorCode === 'IMAGE_QUALITY' ? t('declare.import_image_quality') : (message || t('declare.import_error_generic')));
+          }
+        } catch (_) {}
+      }, 3000);
+
+      setTimeout(() => {
+        if (importPollRef.current) {
+          clearInterval(importPollRef.current);
+          importPollRef.current = null;
+          setImportLoading(false);
+          setImportStatus('error');
+          setImportMessage(t('declare.import_timeout'));
+        }
+      }, 2 * 60 * 1000);
+
+    } catch (err) {
+      setImportLoading(false);
+      setImportStatus('error');
+      setImportMessage(err?.response?.data?.error || t('declare.import_error_generic'));
+    }
+  };
 
   const GENRES = [
     { value: 'homme',  label: 'Homme',  icon: '♂' },
@@ -869,11 +949,81 @@ export default function DeclarePriereForm() {
               </>
             )}
           </button>
+
+          {(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase())) && (
+            <>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
+                onChange={handleImportFlyer}
+              />
+              <button
+                type="button"
+                className="df-submit df-submit-import"
+                disabled={importLoading}
+                onClick={() => importFileRef.current?.click()}
+              >
+                {importLoading ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="df-spin">
+                      <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
+                    </svg>
+                    {t('declare.import_processing_short')}
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                    </svg>
+                    {t('declare.import_flyer')}
+                  </>
+                )}
+              </button>
+              <p className="df-import-hint">{t('declare.import_hint')}</p>
+              {importStatus && (
+                <div className={`df-import-status df-import-status--${importStatus}`}>
+                  {importStatus === 'success' && '✓ '}
+                  {importStatus === 'error' && '✕ '}
+                  {importStatus === 'pending' && '⏳ '}
+                  {importMessage}
+                </div>
+              )}
+            </>
+          )}
         </form>
       </div>
 
       {showPreview && (
         <PreviewModal data={cardData} onClose={() => setShowPreview(false)} />
+      )}
+
+      {showImportVerify && (
+        <div className="modal-overlay" onClick={() => setShowImportVerify(false)}>
+          <div className="modal-box" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>ℹ️ {t('declare.import_verify_title')}</h3>
+              <button className="modal-close" onClick={() => setShowImportVerify(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {importTimeUnknown && (
+                <p style={{ color: '#b45309', fontWeight: '600', marginBottom: '0.75rem' }}>
+                  {t('declare.import_verify_time_unknown')}
+                </p>
+              )}
+              {t('declare.import_verify_body').split('\n').map((line, i) => (
+                <p key={i} style={{ marginBottom: '0.5rem' }}>{line}</p>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setShowImportVerify(false)}>
+                {t('declare.import_verify_close')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
