@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { logout } from '../lib/actions/authActions';
+import { useDeclareModal } from '../context/DeclareModalContext';
 import logo from '../assets/icon.png';
 
 const LANGS = [
@@ -14,8 +15,10 @@ const LANGS = [
 export default function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated } = useSelector((s) => s.auth);
+  const { isAuthenticated, user } = useSelector((s) => s.auth);
+  const { openModal } = useDeclareModal();
   const [menuOpen, setMenuOpen] = useState(false);
+  const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
   const [langOpen, setLangOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const langRef = useRef(null);
@@ -53,7 +56,16 @@ export default function Navbar() {
         {/* Nav links — desktop */}
         <div className={`navbar-links${menuOpen ? ' open' : ''}`}>
           <Link to="/prieres" onClick={() => setMenuOpen(false)}>{t('nav.prayers')}</Link>
-          <Link to={isAuthenticated ? '/tableau-de-bord/declarer' : '/connexion'} onClick={() => setMenuOpen(false)}>{t('nav.declare')}</Link>
+          <Link
+            to={isAuthenticated ? '/tableau-de-bord/declarer' : '/connexion'}
+            onClick={e => {
+              setMenuOpen(false);
+              if (isAuthenticated && canImport) {
+                e.preventDefault();
+                openModal();
+              }
+            }}
+          >{t('nav.declare')}</Link>
           <Link to="/contact" onClick={() => setMenuOpen(false)}>{t('nav.contact')}</Link>
           <Link to="/soutenez-nous" className="navbar-donate" onClick={() => setMenuOpen(false)}>
             {t('nav.support')}

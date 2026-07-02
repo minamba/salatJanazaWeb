@@ -142,7 +142,7 @@ function MapViewController({ mode, userPos, countryBounds, allPoints }) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtTime(d) {
-  return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -166,11 +166,13 @@ function buildItineraireUrl(userPos, lat, lng) {
 }
 function fmtDateLabel(d) {
   const date = new Date(d);
-  const today = new Date();
-  const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
-  if (date.toDateString() === today.toDateString()) return "Aujourd'hui";
-  if (date.toDateString() === tomorrow.toDateString()) return 'Demain';
-  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateUTC = date.toISOString().slice(0, 10);
+  const now = new Date();
+  const todayUTC = now.toISOString().slice(0, 10);
+  const tomorrowUTC = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  if (dateUTC === todayUTC) return "Aujourd'hui";
+  if (dateUTC === tomorrowUTC) return 'Demain';
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
 
 // ─── Share modal (portal, rendered outside the Leaflet popup) ────────────────

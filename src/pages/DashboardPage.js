@@ -2,9 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { fetchPrieres, fetchPrieresByUser, updatePriere, deletePriere } from '../lib/actions/priereJanazaActions';
+import { fetchPrieresByUser, updatePriere, deletePriere } from '../lib/actions/priereJanazaActions';
 import { fetchMosquees } from '../lib/actions/mosqueeActions';
 import { logout } from '../lib/actions/authActions';
+import { useDeclareModal } from '../context/DeclareModalContext';
 import DeclarePriereForm from './shared/DeclarePriereForm';
 import PriereCard from './shared/PriereCard';
 import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
@@ -19,13 +20,22 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useSelector((s) => s.auth);
-  const { myPrieres, myPrieresLoading, list, loading } = useSelector((s) => s.priereJanaza);
+  const { openModal } = useDeclareModal();
+  const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
+
+  function handleDeclare(e) {
+    if (canImport) {
+      e.preventDefault();
+      openModal();
+    }
+  }
+  const { myPrieres, myPrieresLoading } = useSelector((s) => s.priereJanaza);
   const [resolvedDbId, setResolvedDbId] = useState(null);
 
   const isAdmin = user?.role && ['admin', 'superadmin'].includes(user.role.toLowerCase());
 
-  const displayPrieres = isAdmin ? list : myPrieres;
-  const displayLoading = isAdmin ? loading : myPrieresLoading;
+  const displayPrieres = myPrieres;
+  const displayLoading = myPrieresLoading;
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const [filterGenre,   setFilterGenre]   = useState('');
@@ -48,12 +58,11 @@ export default function DashboardPage() {
   // ── Fetch data ────────────────────────────────────────────────────────────────
   useEffect(() => {
     dispatch(fetchMosquees());
-    if (isAdmin) dispatch(fetchPrieres());
-  }, [dispatch, isAdmin]);
+  }, [dispatch]);
 
   useEffect(() => {
-    if (!isAdmin && resolvedDbId) dispatch(fetchPrieresByUser(resolvedDbId));
-  }, [dispatch, isAdmin, resolvedDbId]);
+    if (resolvedDbId) dispatch(fetchPrieresByUser(resolvedDbId));
+  }, [dispatch, resolvedDbId]);
 
   // ── Sort: newest → oldest by dateCreation ────────────────────────────────────
   const sortedPrieres = useMemo(() => {
@@ -135,7 +144,7 @@ export default function DashboardPage() {
         </div>
         <nav className="dashboard-nav">
           <Link to="/tableau-de-bord">{t('dashboard.my_prayers')}</Link>
-          <Link to="/tableau-de-bord/declarer">{t('dashboard.declare')}</Link>
+          <Link to="/tableau-de-bord/declarer" onClick={handleDeclare}>{t('dashboard.declare')}</Link>
           {isAdmin && (
             <Link to="/admin">{t('dashboard.admin')}</Link>
           )}
@@ -153,7 +162,7 @@ export default function DashboardPage() {
                   <h2 style={{ margin: 0 }}>{t('dashboard.title')}</h2>
                   {isAdmin && (
                     <span style={{ background: '#e8f0fe', color: '#1a56db', fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: '999px', fontWeight: 500 }}>
-                      Mode administrateur — toutes les prières
+                      Compte administrateur
                     </span>
                   )}
                 </div>
@@ -212,7 +221,7 @@ export default function DashboardPage() {
                 {!displayLoading && sortedPrieres.length === 0 && (
                   <div className="empty-state">
                     <p>{t('dashboard.empty')}</p>
-                    <Link to="/tableau-de-bord/declarer" className="btn btn-primary">
+                    <Link to="/tableau-de-bord/declarer" className="btn btn-primary" onClick={handleDeclare}>
                       {t('dashboard.declare_first')}
                     </Link>
                   </div>

@@ -1,12 +1,13 @@
 import { useSelector } from 'react-redux';
 
 export function toLocalDatetimeInput(utcStr) {
-  const d = new Date(utcStr);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+  // On affiche l'heure UTC telle quelle dans le champ datetime-local (pas de conversion locale)
+  return new Date(utcStr).toISOString().substring(0, 16);
 }
 
 export function toUTCISOString(localStr) {
-  return new Date(localStr).toISOString();
+  // L'utilisateur a saisi une heure "murale" → on la traite comme UTC directement
+  return new Date(localStr + 'Z').toISOString();
 }
 
 export function normalizeGenre(g) {

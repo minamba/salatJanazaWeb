@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee, fetchPendingMosquees, validerMosquee as validerMosqueeReq } from '../lib/actions/mosqueeActions';
+import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee, fetchPendingMosquees, validerMosquee as validerMosqueeReq, refuserMosquee as refuserMosqueeReq } from '../lib/actions/mosqueeActions';
 import { fetchPrieres, deletePriere, updatePriere, fetchPrieresEnAttente } from '../lib/actions/priereJanazaActions';
 import {
   fetchUtilisateurs,
@@ -60,12 +60,11 @@ function normalize(str) {
 
 // ─── Datetime helpers ─────────────────────────────────────────────────────────
 function toLocalDatetimeInput(utcStr) {
-  const d = new Date(utcStr);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+  return new Date(utcStr).toISOString().substring(0, 16);
 }
 
 function toUTCISOString(localStr) {
-  return new Date(localStr).toISOString();
+  return new Date(localStr + 'Z').toISOString();
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -123,6 +122,10 @@ export default function AdminPage() {
   const [importPermLoading, setImportPermLoading] = useState(false);
   const [importPermUsers, setImportPermUsers] = useState(null); // null = use redux, array = local override
 
+  // ── Normalisation mosquées sans nom ──────────────────────────────────────────
+  const [normLoading, setNormLoading] = useState(false);
+  const [normResult, setNormResult] = useState(null);
+
   useEffect(() => {
     dispatch(fetchMosquees());
     dispatch(fetchPrieres());
@@ -150,9 +153,9 @@ export default function AdminPage() {
     return `${u.prenom ?? ''} ${u.nom ?? ''}`.trim() || `#${utilisateurId}`;
   }, [utilisateurs]);
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-  const toLocalISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const fmtDate = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' }) : '—';
+  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—';
+  const toLocalISODate = (d) => d.toISOString().slice(0, 10);
 
   // ── Filtered lists ───────────────────────────────────────────────────────────
   const filteredPrieres = useMemo(() => {
@@ -347,6 +350,7 @@ export default function AdminPage() {
 
   const handleValiderPending = (id) => {
     const m = pendingMosquees.find((x) => x.id === id);
+    if (!window.confirm(`Valider la mosquée "${m?.nom ?? 'cette mosquée'}" ?`)) return;
     dispatch(validerMosqueeReq(id));
     showNotif(`✓ La mosquée "${m?.nom ?? id}" a été validée et ajoutée à la liste.`);
   };
@@ -354,7 +358,7 @@ export default function AdminPage() {
   const handleRefuserPending = (id) => {
     const m = pendingMosquees.find((x) => x.id === id);
     if (!window.confirm(`Refuser et supprimer "${m?.nom ?? 'cette mosquée'}" ?`)) return;
-    dispatch(deleteMosquee(id));
+    dispatch(refuserMosqueeReq(id));
     showNotif(`La mosquée "${m?.nom ?? id}" a été refusée et supprimée.`, 'error');
   };
 
@@ -371,7 +375,7 @@ export default function AdminPage() {
     if (!selectedPending.size) return;
     const count = selectedPending.size;
     if (!window.confirm(`Refuser et supprimer ${count} mosquée(s) sélectionnée(s) ?`)) return;
-    selectedPending.forEach((id) => dispatch(deleteMosquee(id)));
+    selectedPending.forEach((id) => dispatch(refuserMosqueeReq(id)));
     setSelectedPending(new Set());
     showNotif(`Les ${count} mosquées sélectionnées ont été refusées et supprimées.`, 'error');
   };
@@ -389,7 +393,7 @@ export default function AdminPage() {
     if (!pendingMosquees.length) return;
     const count = pendingMosquees.length;
     if (!window.confirm(`Refuser et supprimer toutes les ${count} mosquée(s) en attente ?`)) return;
-    pendingMosquees.forEach((m) => dispatch(deleteMosquee(m.id)));
+    pendingMosquees.forEach((m) => dispatch(refuserMosqueeReq(m.id)));
     setSelectedPending(new Set());
     showNotif(`Toutes les ${count} mosquées en attente ont été refusées et supprimées.`, 'error');
   };
@@ -445,6 +449,22 @@ export default function AdminPage() {
       showNotif('Impossible de modifier les permissions.', 'error');
     } finally {
       setImportPermLoading(false);
+    }
+  };
+
+  const handleNormaliserSansNom = async () => {
+    if (!window.confirm('Renommer toutes les mosquées nommées exactement "Mosquée" d\'après leur ville, et supprimer celles sans adresse valide ?')) return;
+    setNormLoading(true);
+    setNormResult(null);
+    try {
+      const { data } = await apiClient.post('/api/mosquee/normaliser-sans-nom');
+      setNormResult(data);
+      dispatch(fetchMosquees());
+      showNotif(`Normalisé : ${data.renommes?.length ?? 0} renommées, ${data.supprimes?.length ?? 0} supprimées, ${data.ignores?.length ?? 0} ignorées.`);
+    } catch {
+      showNotif('Erreur lors de la normalisation.', 'error');
+    } finally {
+      setNormLoading(false);
     }
   };
 
@@ -681,6 +701,25 @@ export default function AdminPage() {
                     {geoLoading ? 'Géocodage en cours...' : 'Ajouter'}
                   </button>
                 </form>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={handleNormaliserSansNom}
+                    disabled={normLoading}
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    {normLoading ? 'Normalisation…' : 'Normaliser mosquées sans nom'}
+                  </button>
+                  {normResult && (
+                    <div className="alert alert-success" style={{ marginTop: '0.5rem', fontSize: '0.82rem' }}>
+                      <strong>Renommées ({normResult.renommes?.length ?? 0}) :</strong>{' '}
+                      {normResult.renommes?.map(r => `${r.ancienNom} → ${r.nouveauNom}`).join(', ') || '—'}
+                      {' · '}<strong>Supprimées :</strong> {normResult.supprimes?.length ?? 0}
+                      {' · '}<strong>Ignorées (janazas liées) :</strong> {normResult.ignores?.length ?? 0}
+                    </div>
+                  )}
+                </div>
 
                 <div className="admin-search-bar" style={{ marginBottom: '0.75rem' }}>
                   <SearchBar

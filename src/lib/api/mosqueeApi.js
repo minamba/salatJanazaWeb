@@ -11,3 +11,4 @@ export const updateMosquee = (id, data) => apiClient.put(`/api/mosquee/${id}`, d
 export const deleteMosquee = (id) => apiClient.delete(`/api/mosquee/${id}`);
 export const getPendingMosquees = () => apiClient.get('/api/mosquee/pending');
 export const validerMosquee = (id) => apiClient.put(`/api/mosquee/${id}/valider`);
+export const refuserMosquee = (id) => apiClient.put(`/api/mosquee/${id}/refuser`);

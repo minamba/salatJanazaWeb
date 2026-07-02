@@ -33,13 +33,13 @@ function prepPays(pays) {
 function fmtDate(d, lang) {
   const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
   return new Date(d).toLocaleDateString(locale, {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 }
 
 function fmtHeure(d, lang) {
   const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
-  return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 
 const AvisDecesCard = forwardRef(({ data }, ref) => {

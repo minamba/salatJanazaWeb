@@ -8,9 +8,9 @@ const MOIS   = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep',
 
 function fmtDate(d) {
   const date = new Date(d);
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${JOURS[date.getDay()]} ${date.getDate()} ${MOIS[date.getMonth()]} · ${h}h${m}`;
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const m = String(date.getUTCMinutes()).padStart(2, '0');
+  return `${JOURS[date.getUTCDay()]} ${date.getUTCDate()} ${MOIS[date.getUTCMonth()]} · ${h}h${m}`;
 }
 
 function defuntLabel(p) {

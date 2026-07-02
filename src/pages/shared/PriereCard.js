@@ -191,8 +191,8 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
   const [showShare, setShowShare] = useState(false);
 
   const date = new Date(priere.dateHeurePriere);
-  const dateStr = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
-  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
   const createdAt = priere.dateCreation
     ? new Date(priere.dateCreation).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
     : null;

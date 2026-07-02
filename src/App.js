@@ -7,6 +7,8 @@ import { refreshUserProfile } from './lib/actions/authActions';
 import './App.css';
 
 import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast } from './components';
+import DeclareChoiceModal from './components/DeclareChoiceModal';
+import { DeclareModalProvider } from './context/DeclareModalContext';
 import LandingPage from './pages/LandingPage';
 import PrieresPage from './pages/PrieresPage';
 import MosqueesPage from './pages/MosqueesPage';
@@ -46,13 +48,15 @@ function AppRoutes() {
 
   return (
     <BrowserRouter>
-      <div className="sticky-header">
-        <TopBanner />
-        <Navbar />
-      </div>
-      <JanazaToast />
-      <main className="main-content">
-        <Routes>
+      <DeclareModalProvider>
+        <DeclareChoiceModal />
+        <div className="sticky-header">
+          <TopBanner />
+          <Navbar />
+        </div>
+        <JanazaToast />
+        <main className="main-content">
+          <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/prieres" element={<PrieresPage />} />
           <Route path="/mosquees" element={<MosqueesPage />} />
@@ -78,9 +82,10 @@ function AppRoutes() {
               </AdminRoute>
             }
           />
-        </Routes>
-      </main>
-      <Footer />
+          </Routes>
+        </main>
+        <Footer />
+      </DeclareModalProvider>
     </BrowserRouter>
   );
 }

@@ -8,6 +8,7 @@ import {
   UPDATE_MOSQUEE_REQUEST, UPDATE_MOSQUEE_SUCCESS, UPDATE_MOSQUEE_FAILURE,
   FETCH_PENDING_MOSQUEES_REQUEST, FETCH_PENDING_MOSQUEES_SUCCESS, FETCH_PENDING_MOSQUEES_FAILURE,
   VALIDER_MOSQUEE_REQUEST, VALIDER_MOSQUEE_SUCCESS, VALIDER_MOSQUEE_FAILURE,
+  REFUSER_MOSQUEE_REQUEST, REFUSER_MOSQUEE_SUCCESS, REFUSER_MOSQUEE_FAILURE,
 } from '../actions/mosqueeActions';
 
 function* fetchMosqueesSaga() {
@@ -76,6 +77,16 @@ function* validerMosqueeSaga(action) {
   }
 }
 
+function* refuserMosqueeSaga(action) {
+  try {
+    yield call(mosqueeApi.refuserMosquee, action.payload);
+    yield put({ type: REFUSER_MOSQUEE_SUCCESS, payload: action.payload });
+    yield put({ type: FETCH_PENDING_MOSQUEES_REQUEST });
+  } catch {
+    yield put({ type: REFUSER_MOSQUEE_FAILURE, payload: 'Erreur refus mosquée.' });
+  }
+}
+
 export default function* mosqueeSaga() {
   yield takeLatest(FETCH_MOSQUEES_REQUEST, fetchMosqueesSaga);
   yield takeLatest(FETCH_MOSQUEES_NEARBY_REQUEST, fetchMosqueesNearbySaga);
@@ -84,4 +95,5 @@ export default function* mosqueeSaga() {
   yield takeLatest(UPDATE_MOSQUEE_REQUEST, updateMosqueeSaga);
   yield takeLatest(FETCH_PENDING_MOSQUEES_REQUEST, fetchPendingMosqueesSaga);
   yield takeEvery(VALIDER_MOSQUEE_REQUEST, validerMosqueeSaga);
+  yield takeEvery(REFUSER_MOSQUEE_REQUEST, refuserMosqueeSaga);
 }

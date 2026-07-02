@@ -157,6 +157,7 @@ function formatNomMosquee(text) {
 // ── Inline add mosque form ────────────────────────────────────────────────────
 function AddMosqueeForm({ onClose }) {
   const { t } = useTranslation();
+  const { user } = useSelector((s) => s.auth);
   const [nom, setNom]               = useState('');
   const [adresse, setAdresse]       = useState('');
   const [coords, setCoords]         = useState(null);
@@ -248,6 +249,7 @@ function AddMosqueeForm({ onClose }) {
         adresse: adresse.trim(),
         latitude: finalCoords.lat,
         longitude: finalCoords.lon,
+        utilisateurId: user?.dbId ?? null,
       });
       setSubmitted(true);
     } catch {
@@ -678,8 +680,7 @@ export default function DeclarePriereForm() {
       nomDefunt:        form.estAnonyme ? null : form.nomDefunt || null,
       estAnonyme:       form.estAnonyme,
       genre:            form.genre || null,
-      dateHeurePriere:  form.dateHeurePriere ? new Date(form.dateHeurePriere).toISOString() : null,
-      utcOffsetMinutes: form.dateHeurePriere ? -(new Date(form.dateHeurePriere).getTimezoneOffset()) : 0,
+      dateHeurePriere:  form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z').toISOString() : null,
       commentaire:      form.commentaire || null,
       paysEnterrement:  form.paysEnterrement || null,
       villeEnterrement: form.villeEnterrement || null,
@@ -705,12 +706,9 @@ export default function DeclarePriereForm() {
 
   const canPreview = !!(form.dateHeurePriere && (form.nomDefunt || form.estAnonyme));
   const busy = submitting || createLoading;
+  const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
 
-  const handleImportFlyer = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
+  const processImportFile = async (file) => {
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
       setImportStatus('error');
       setImportMessage(t('declare.import_format_body'));
@@ -775,6 +773,13 @@ export default function DeclarePriereForm() {
       setImportStatus('error');
       setImportMessage(err?.response?.data?.error || t('declare.import_error_generic'));
     }
+  };
+
+  const handleImportFlyer = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    processImportFile(file);
   };
 
   const GENRES = [
@@ -950,7 +955,7 @@ export default function DeclarePriereForm() {
             )}
           </button>
 
-          {(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase())) && (
+          {canImport && (
             <>
               <input
                 ref={importFileRef}
@@ -959,30 +964,6 @@ export default function DeclarePriereForm() {
                 style={{ display: 'none' }}
                 onChange={handleImportFlyer}
               />
-              <button
-                type="button"
-                className="df-submit df-submit-import"
-                disabled={importLoading}
-                onClick={() => importFileRef.current?.click()}
-              >
-                {importLoading ? (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="df-spin">
-                      <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
-                    </svg>
-                    {t('declare.import_processing_short')}
-                  </>
-                ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
-                      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-                    </svg>
-                    {t('declare.import_flyer')}
-                  </>
-                )}
-              </button>
-              <p className="df-import-hint">{t('declare.import_hint')}</p>
               {importStatus && (
                 <div className={`df-import-status df-import-status--${importStatus}`}>
                   {importStatus === 'success' && '✓ '}

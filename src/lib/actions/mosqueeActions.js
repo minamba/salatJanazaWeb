@@ -18,6 +18,9 @@ export const FETCH_PENDING_MOSQUEES_FAILURE = 'FETCH_PENDING_MOSQUEES_FAILURE';
 export const VALIDER_MOSQUEE_REQUEST = 'VALIDER_MOSQUEE_REQUEST';
 export const VALIDER_MOSQUEE_SUCCESS = 'VALIDER_MOSQUEE_SUCCESS';
 export const VALIDER_MOSQUEE_FAILURE = 'VALIDER_MOSQUEE_FAILURE';
+export const REFUSER_MOSQUEE_REQUEST = 'REFUSER_MOSQUEE_REQUEST';
+export const REFUSER_MOSQUEE_SUCCESS = 'REFUSER_MOSQUEE_SUCCESS';
+export const REFUSER_MOSQUEE_FAILURE = 'REFUSER_MOSQUEE_FAILURE';
 
 export const fetchMosquees = () => ({ type: FETCH_MOSQUEES_REQUEST });
 export const fetchMosqueesNearby = (lat, lng, radiusKm) => ({
@@ -29,3 +32,4 @@ export const deleteMosquee = (id) => ({ type: DELETE_MOSQUEE_REQUEST, payload: i
 export const updateMosquee = (id, data) => ({ type: UPDATE_MOSQUEE_REQUEST, payload: { id, data } });
 export const fetchPendingMosquees = () => ({ type: FETCH_PENDING_MOSQUEES_REQUEST });
 export const validerMosquee = (id) => ({ type: VALIDER_MOSQUEE_REQUEST, payload: id });
+export const refuserMosquee = (id) => ({ type: REFUSER_MOSQUEE_REQUEST, payload: id });
