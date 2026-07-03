@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux';
+import { computeUtcOffsetMinutes } from '../../lib/timezoneUtils';
 
 export function toLocalDatetimeInput(utcStr) {
   // On affiche l'heure UTC telle quelle dans le champ datetime-local (pas de conversion locale)
@@ -19,32 +20,40 @@ export function normalizeGenre(g) {
 
 export function buildInitialForm(priere) {
   return {
-    estAnonyme:       priere.estAnonyme ?? false,
-    nomDefunt:        priere.nomDefunt ?? '',
-    genre:            normalizeGenre(priere.genre),
-    mosqueeId:        priere.mosqueeId ?? '',
-    dateHeurePriere:  priere.dateHeurePriere ? toLocalDatetimeInput(priere.dateHeurePriere) : '',
-    noYearInfo:       !(priere.anneeNaissance || priere.anneeDeces),
-    anneeNaissance:   priere.anneeNaissance ?? '',
-    anneeDeces:       priere.anneeDeces ?? '',
-    commentaire:      priere.commentaire ?? '',
-    paysEnterrement:  priere.paysEnterrement ?? '',
-    villeEnterrement: priere.villeEnterrement ?? '',
+    estAnonyme:        priere.estAnonyme ?? false,
+    nomDefunt:         priere.nomDefunt ?? '',
+    genre:             normalizeGenre(priere.genre),
+    mosqueeId:         priere.mosqueeId ?? '',
+    dateHeurePriere:   priere.dateHeurePriere ? toLocalDatetimeInput(priere.dateHeurePriere) : '',
+    noYearInfo:        !(priere.anneeNaissance || priere.anneeDeces),
+    anneeNaissance:    priere.anneeNaissance ?? '',
+    anneeDeces:        priere.anneeDeces ?? '',
+    commentaire:       priere.commentaire ?? '',
+    paysEnterrement:   priere.paysEnterrement ?? '',
+    villeEnterrement:  priere.villeEnterrement ?? '',
+    utcOffsetMinutes:  priere.utcOffsetMinutes ?? 0,
   };
 }
 
 export function buildPayload(form) {
+  const prayerDate = form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z') : new Date();
+  const utcOffsetMinutes = computeUtcOffsetMinutes(
+    form.paysEnterrement,
+    form.utcOffsetMinutes ?? 0,
+    prayerDate,
+  );
   return {
-    nomDefunt:        form.estAnonyme ? null : (form.nomDefunt || null),
-    estAnonyme:       form.estAnonyme,
-    genre:            form.genre || null,
-    mosqueeId:        form.mosqueeId ? parseInt(form.mosqueeId) : null,
-    dateHeurePriere:  form.dateHeurePriere ? toUTCISOString(form.dateHeurePriere) : null,
-    anneeNaissance:   (!form.noYearInfo && form.anneeNaissance) ? parseInt(form.anneeNaissance) : null,
-    anneeDeces:       (!form.noYearInfo && form.anneeDeces) ? parseInt(form.anneeDeces) : null,
-    commentaire:      form.commentaire || null,
-    paysEnterrement:  form.paysEnterrement || null,
-    villeEnterrement: form.villeEnterrement || null,
+    nomDefunt:         form.estAnonyme ? null : (form.nomDefunt || null),
+    estAnonyme:        form.estAnonyme,
+    genre:             form.genre || null,
+    mosqueeId:         form.mosqueeId ? parseInt(form.mosqueeId) : null,
+    dateHeurePriere:   form.dateHeurePriere ? toUTCISOString(form.dateHeurePriere) : null,
+    anneeNaissance:    (!form.noYearInfo && form.anneeNaissance) ? parseInt(form.anneeNaissance) : null,
+    anneeDeces:        (!form.noYearInfo && form.anneeDeces) ? parseInt(form.anneeDeces) : null,
+    commentaire:       form.commentaire || null,
+    paysEnterrement:   form.paysEnterrement || null,
+    villeEnterrement:  form.villeEnterrement || null,
+    utcOffsetMinutes,
   };
 }
 

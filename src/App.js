@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { refreshUserProfile } from './lib/actions/authActions';
+import { expirePrieres } from './lib/actions/priereJanazaActions';
 import './App.css';
 
 import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast } from './components';
@@ -33,6 +34,13 @@ function AppRoutes() {
     document.documentElement.dir = dir;
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
+
+  // Purge les janazas expirées (même règle que mobile : 2h après l'heure affichée)
+  useEffect(() => {
+    dispatch(expirePrieres());
+    const timer = setInterval(() => dispatch(expirePrieres()), 60_000);
+    return () => clearInterval(timer);
+  }, [dispatch]);
 
   // Rafraîchit canImportFlyer dès que l'onglet redevient visible ou toutes les 3 minutes
   useEffect(() => {

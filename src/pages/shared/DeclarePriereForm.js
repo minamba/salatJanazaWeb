@@ -8,6 +8,7 @@ import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeAp
 import AvisDecesCard from '../../components/AvisDecesCard';
 import { capitalizeFirst } from '../../lib/utils';
 import { apiClient } from '../../lib/api/axiosConfig';
+import { computeUtcOffsetMinutes } from '../../lib/timezoneUtils';
 
 // ── Country list ──────────────────────────────────────────────────────────────
 const PAYS = [
@@ -645,18 +646,19 @@ export default function DeclarePriereForm() {
     setSubmitError('');
 
     // Duplicate detection
+    // dateHeurePriere values are wall-clock UTC: compare via getUTC* methods.
     if (form.dateHeurePriere) {
       const norm = (s) => (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-      const proposedDate = new Date(form.dateHeurePriere);
-      const proposedDay = `${proposedDate.getFullYear()}-${proposedDate.getMonth()}-${proposedDate.getDate()}`;
-      const proposedHour = proposedDate.getHours();
+      const proposedDate = new Date(form.dateHeurePriere + 'Z');
+      const proposedDay = `${proposedDate.getUTCFullYear()}-${proposedDate.getUTCMonth()}-${proposedDate.getUTCDate()}`;
+      const proposedHour = proposedDate.getUTCHours();
       const proposedMosqueeId = Number(selectedMosquee.id);
 
       const sameHourConflict = existingPrieres.find((p) => {
         if (!p.dateHeurePriere) return false;
         const d = new Date(p.dateHeurePriere);
-        const day = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-        return Number(p.mosqueeId) === proposedMosqueeId && day === proposedDay && d.getHours() === proposedHour;
+        const day = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+        return Number(p.mosqueeId) === proposedMosqueeId && day === proposedDay && d.getUTCHours() === proposedHour;
       });
 
       if (sameHourConflict) {
@@ -673,6 +675,12 @@ export default function DeclarePriereForm() {
     }
 
     const mosqueeId = selectedMosquee.id;
+    const prayerDate = form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z') : new Date();
+    const utcOffsetMinutes = computeUtcOffsetMinutes(
+      form.paysEnterrement,
+      selectedMosquee.longitude,
+      prayerDate,
+    );
     dispatch(createPriere({
       mosqueeId:        Number(mosqueeId),
       mosqueeNom:       capitalizeFirst(selectedMosquee.nom),
@@ -680,10 +688,11 @@ export default function DeclarePriereForm() {
       nomDefunt:        form.estAnonyme ? null : form.nomDefunt || null,
       estAnonyme:       form.estAnonyme,
       genre:            form.genre || null,
-      dateHeurePriere:  form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z').toISOString() : null,
+      dateHeurePriere:  form.dateHeurePriere ? prayerDate.toISOString() : null,
       commentaire:      form.commentaire || null,
       paysEnterrement:  form.paysEnterrement || null,
       villeEnterrement: form.villeEnterrement || null,
+      utcOffsetMinutes,
     }));
     setSubmitting(false);
   };
