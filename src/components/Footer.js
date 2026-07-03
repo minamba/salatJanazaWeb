@@ -18,8 +18,8 @@ export default function Footer() {
           <Link to="/connexion">{t('footer.login')}</Link>
         </div>
         <div className="footer-stores">
-          <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="store-badge">App Store</a>
-          <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" className="store-badge">Google Play</a>
+          <a href="https://apps.apple.com/fr/app/salat-janaza/id6779829008?l=en-GB" target="_blank" rel="noopener noreferrer" className="store-badge">App Store</a>
+          <a href="https://play.google.com/store/apps/details?id=fr.myjanaza.qabr" target="_blank" rel="noopener noreferrer" className="store-badge">Google Play</a>
         </div>
       </div>
 

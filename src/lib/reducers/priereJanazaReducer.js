@@ -118,7 +118,9 @@ export default function priereJanazaReducer(state = initialState, action) {
         ...state,
         list: state.list.filter((p) => {
           if (!p.dateHeurePriere) return false;
-          return Date.now() - new Date(p.dateHeurePriere).getTime() < TWO_HOURS_MS;
+          // dateHeurePriere est wall-clock UTC. Le vrai UTC = wall-clock - offset.
+          const trueUtcMs = new Date(p.dateHeurePriere + 'Z').getTime() - (p.utcOffsetMinutes ?? 0) * 60_000;
+          return Date.now() - trueUtcMs < TWO_HOURS_MS;
         }),
       };
 

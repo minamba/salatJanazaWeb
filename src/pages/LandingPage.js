@@ -155,7 +155,7 @@ export default function LandingPage() {
               <Link to="/prieres" className="btn btn-outline-white">{t('landing.hero.cta_prayers')}</Link>
             </div>
             <div className="hero-store-row">
-              <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-apple">
+              <a href="https://apps.apple.com/fr/app/salat-janaza/id6779829008?l=en-GB" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-apple">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
@@ -164,7 +164,7 @@ export default function LandingPage() {
                   <strong>App Store</strong>
                 </span>
               </a>
-              <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-google">
+              <a href="https://play.google.com/store/apps/details?id=fr.myjanaza.qabr" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-google">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true">
                   <path d="M3.18 23.76c.3.17.65.19.97.07l11.65-6.73-2.6-2.6-10.02 9.26zm-1.41-20.4C1.46 3.7 1.25 4.1 1.25 4.6v14.8c0 .5.21.9.52 1.24l.07.06 8.29-8.29v-.19L1.77 3.36zm18.48 8.05L17.5 9.3l-2.88 2.88 2.89 2.88 2.76-1.59c.79-.45.79-1.19-.02-1.66zM4.15.24L15.8 6.97l-2.6 2.6L3.18.31A1.1 1.1 0 0 1 4.15.24z"/>
                 </svg>
@@ -234,13 +234,13 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="hero-store-row">
-              <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-apple">
+              <a href="https://apps.apple.com/fr/app/salat-janaza/id6779829008?l=en-GB" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-apple">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 <span><small>{t('landing.features.available_on')}</small><strong>App Store</strong></span>
               </a>
-              <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-google">
+              <a href="https://play.google.com/store/apps/details?id=fr.myjanaza.qabr" target="_blank" rel="noopener noreferrer" className="hero-store-badge hero-store-badge-google">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true">
                   <path d="M3.18 23.76c.3.17.65.19.97.07l11.65-6.73-2.6-2.6-10.02 9.26zm-1.41-20.4C1.46 3.7 1.25 4.1 1.25 4.6v14.8c0 .5.21.9.52 1.24l.07.06 8.29-8.29v-.19L1.77 3.36zm18.48 8.05L17.5 9.3l-2.88 2.88 2.89 2.88 2.76-1.59c.79-.45.79-1.19-.02-1.66zM4.15.24L15.8 6.97l-2.6 2.6L3.18.31A1.1 1.1 0 0 1 4.15.24z"/>
                 </svg>
@@ -427,13 +427,13 @@ export default function LandingPage() {
               <li><span className="mobile-check">✓</span>{t('landing.mobile.feat_4')}</li>
             </ul>
             <div className="store-badges">
-              <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="store-badge-btn">
+              <a href="https://apps.apple.com/fr/app/salat-janaza/id6779829008?l=en-GB" target="_blank" rel="noopener noreferrer" className="store-badge-btn">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 <span><small>{t('landing.mobile.download_on')}</small>App Store</span>
               </a>
-              <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" className="store-badge-btn store-badge-btn-outline">
+              <a href="https://play.google.com/store/apps/details?id=fr.myjanaza.qabr" target="_blank" rel="noopener noreferrer" className="store-badge-btn store-badge-btn-outline">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true">
                   <path d="M3.18 23.76c.3.17.65.19.97.07l11.65-6.73-2.6-2.6-10.02 9.26zm-1.41-20.4C1.46 3.7 1.25 4.1 1.25 4.6v14.8c0 .5.21.9.52 1.24l.07.06 8.29-8.29v-.19L1.77 3.36zm18.48 8.05L17.5 9.3l-2.88 2.88 2.89 2.88 2.76-1.59c.79-.45.79-1.19-.02-1.66zM4.15.24L15.8 6.97l-2.6 2.6L3.18.31A1.1 1.1 0 0 1 4.15.24z"/>
                 </svg>
