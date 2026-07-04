@@ -453,7 +453,7 @@ export default function AdminPage() {
   };
 
   const handleNormaliserSansNom = async () => {
-    if (!window.confirm('Renommer toutes les mosquées nommées exactement "Mosquée" d\'après leur ville, et supprimer celles sans adresse valide ?')) return;
+    if (!window.confirm('Renommer toutes les mosquées avec un nom générique ("Mosquée", "mosquee", etc.) d\'après leur ville, et supprimer celles sans adresse valide ?')) return;
     setNormLoading(true);
     setNormResult(null);
     try {
