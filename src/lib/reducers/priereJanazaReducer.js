@@ -8,6 +8,7 @@ import {
   FETCH_PRIERES_PENDING_REQUEST, FETCH_PRIERES_PENDING_SUCCESS, FETCH_PRIERES_PENDING_FAILURE,
   JANAZA_EXPIRE,
 } from '../actions/priereJanazaActions';
+import { REFUSER_MOSQUEE_SUCCESS } from '../actions/mosqueeActions';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
@@ -51,6 +52,9 @@ export default function priereJanazaReducer(state = initialState, action) {
       return { ...state, pendingLoading: false, pendingList: action.payload };
     case FETCH_PRIERES_PENDING_FAILURE:
       return { ...state, pendingLoading: false };
+
+    case REFUSER_MOSQUEE_SUCCESS:
+      return { ...state, pendingList: state.pendingList.filter((p) => p.mosqueeId !== action.payload) };
 
     case CREATE_PRIERE_REQUEST:
       return { ...state, createLoading: true, createSuccess: false, createError: null };

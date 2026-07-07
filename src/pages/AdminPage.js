@@ -78,6 +78,9 @@ export default function AdminPage() {
   const [prieresSubTab, setPrieresSubTab] = useState('toutes');
   const [mosqueeSubTab, setMosqueeSubTab] = useState('enregistrees');
   const [selectedPending, setSelectedPending] = useState(new Set());
+  const [importTxtContent, setImportTxtContent] = useState('');
+  const [importTxtLoading, setImportTxtLoading] = useState(false);
+  const [importTxtResult, setImportTxtResult] = useState(null);
 
   // ── Toast notification ────────────────────────────────────────────────────────
   const [notif, setNotif] = useState(null);
@@ -125,6 +128,12 @@ export default function AdminPage() {
   // ── Normalisation mosquées sans nom ──────────────────────────────────────────
   const [normLoading, setNormLoading] = useState(false);
   const [normResult, setNormResult] = useState(null);
+
+  // ── Déclarations — sélection multiple + filtre période ───────────────────────
+  const [declSelectMode, setDeclSelectMode] = useState(false);
+  const [selectedDeclIds, setSelectedDeclIds] = useState(new Set());
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
     dispatch(fetchMosquees());
@@ -177,9 +186,17 @@ export default function AdminPage() {
         const creationDay = p.dateCreation ? toLocalISODate(new Date(p.dateCreation)) : '';
         if (creationDay !== searchPriereCreationDate) return false;
       }
+      if (filterDateFrom) {
+        const priereDay = p.dateHeurePriere ? toLocalISODate(new Date(p.dateHeurePriere)) : '';
+        if (priereDay < filterDateFrom) return false;
+      }
+      if (filterDateTo) {
+        const priereDay = p.dateHeurePriere ? toLocalISODate(new Date(p.dateHeurePriere)) : '';
+        if (priereDay > filterDateTo) return false;
+      }
       return true;
     }).sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation));
-  }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, searchPriereCreationDate, getDeclarantName]);
+  }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, searchPriereCreationDate, filterDateFrom, filterDateTo, getDeclarantName]);
 
   const filteredMosquees = useMemo(() => {
     if (!searchMosquee) return mosquees;
@@ -321,6 +338,30 @@ export default function AdminPage() {
     setEditUserForm({ prenom: u.prenom ?? '', nom: u.nom ?? '', telephone: u.telephone ?? '' });
   };
 
+  const handleImportTxt = async () => {
+    if (!importTxtContent.trim()) return;
+    setImportTxtLoading(true);
+    setImportTxtResult(null);
+    try {
+      const API_URL = process.env.REACT_APP_API_URL ?? '';
+      const res = await fetch(`${API_URL}/api/admin/textimport`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: importTxtContent }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Erreur ${res.status}`);
+      }
+      const data = await res.json();
+      setImportTxtResult({ url: data.url, filename: data.filename });
+    } catch (err) {
+      setImportTxtResult({ error: err.message ?? 'Erreur lors de l\'envoi' });
+    } finally {
+      setImportTxtLoading(false);
+    }
+  };
+
   const handleSaveUser = (e) => {
     e.preventDefault();
     dispatch(updateUtilisateur(editUser.id, {
@@ -452,6 +493,50 @@ export default function AdminPage() {
     }
   };
 
+  const toggleDeclWebSelect = (id) => {
+    setSelectedDeclIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllDeclWeb = () => {
+    if (selectedDeclIds.size === filteredPrieres.length && filteredPrieres.length > 0) {
+      setSelectedDeclIds(new Set());
+    } else {
+      setSelectedDeclIds(new Set(filteredPrieres.map((p) => p.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!selectedDeclIds.size) return;
+    const count = selectedDeclIds.size;
+    if (!window.confirm(`Supprimer ${count} prière(s) sélectionnée(s) ?`)) return;
+    try {
+      await Promise.all([...selectedDeclIds].map((id) => dispatch(deletePriere(id))));
+      setSelectedDeclIds(new Set());
+      setDeclSelectMode(false);
+      showNotif(`✓ ${count} prière(s) supprimée(s).`);
+    } catch {
+      showNotif('Erreur lors de la suppression.', 'error');
+    }
+  };
+
+  const handleDeleteByDateRange = async () => {
+    if (!filteredPrieres.length) return;
+    const count = filteredPrieres.length;
+    if (!window.confirm(`Supprimer les ${count} prière(s) correspondant aux filtres actuels ?`)) return;
+    try {
+      await Promise.all(filteredPrieres.map((p) => dispatch(deletePriere(p.id))));
+      setFilterDateFrom('');
+      setFilterDateTo('');
+      showNotif(`✓ ${count} prière(s) supprimée(s).`);
+    } catch {
+      showNotif('Erreur lors de la suppression.', 'error');
+    }
+  };
+
   const handleNormaliserSansNom = async () => {
     if (!window.confirm('Renommer toutes les mosquées avec un nom générique ("Mosquée", "mosquee", etc.) d\'après leur ville, et supprimer celles sans adresse valide ?')) return;
     setNormLoading(true);
@@ -510,6 +595,12 @@ export default function AdminPage() {
               >
                 En attente {prieresEnAttente.length > 0 ? `(${prieresEnAttente.length})` : ''}
               </button>
+              <button
+                className={`btn ${prieresSubTab === 'importtxt' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => { setPrieresSubTab('importtxt'); setImportTxtResult(null); }}
+              >
+                ☁ Import TXT
+              </button>
             </div>
 
           {prieresSubTab === 'toutes' && <div className="admin-table-wrap">
@@ -546,6 +637,44 @@ export default function AdminPage() {
                   </div>
                 </label>
               </div>
+              {/* Filtre période + actions bulk */}
+              <div className="admin-search-bar" style={{ alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <label className="admin-date-filter">
+                  <span>Période — du</span>
+                  <div className="admin-search admin-search-date">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+                    {filterDateFrom && <button className="admin-search-clear" onClick={() => setFilterDateFrom('')}>✕</button>}
+                  </div>
+                </label>
+                <label className="admin-date-filter">
+                  <span>au</span>
+                  <div className="admin-search admin-search-date">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+                    {filterDateTo && <button className="admin-search-clear" onClick={() => setFilterDateTo('')}>✕</button>}
+                  </div>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
+                  <button
+                    className={`btn ${declSelectMode ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => { setDeclSelectMode((s) => !s); setSelectedDeclIds(new Set()); }}
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    {declSelectMode ? '✕ Annuler' : '☑ Sélectionner'}
+                  </button>
+                  {declSelectMode && selectedDeclIds.size > 0 && (
+                    <button className="btn" style={{ background: 'var(--error, #dc2626)', color: '#fff', whiteSpace: 'nowrap' }} onClick={handleDeleteSelected}>
+                      🗑 Supprimer ({selectedDeclIds.size})
+                    </button>
+                  )}
+                  {(filterDateFrom || filterDateTo) && filteredPrieres.length > 0 && !declSelectMode && (
+                    <button className="btn" style={{ background: 'var(--error, #dc2626)', color: '#fff', whiteSpace: 'nowrap' }} onClick={handleDeleteByDateRange}>
+                      🗑 Supprimer les {filteredPrieres.length} filtrée(s)
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <p className="admin-count">
@@ -558,6 +687,16 @@ export default function AdminPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
+                    {declSelectMode && (
+                      <th style={{ width: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedDeclIds.size === filteredPrieres.length && filteredPrieres.length > 0}
+                          onChange={toggleSelectAllDeclWeb}
+                          title="Tout sélectionner"
+                        />
+                      </th>
+                    )}
                     <th>ID</th>
                     <th>Défunt</th>
                     <th>Genre</th>
@@ -572,7 +711,16 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {filteredPrieres.map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id} style={selectedDeclIds.has(p.id) ? { background: 'var(--primary-dim, rgba(74,122,78,0.10))' } : undefined}>
+                      {declSelectMode && (
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedDeclIds.has(p.id)}
+                            onChange={() => toggleDeclWebSelect(p.id)}
+                          />
+                        </td>
+                      )}
                       <td>{p.id}</td>
                       <td>{p.estAnonyme ? <em>Anonyme</em> : (p.nomDefunt ?? '—')}</td>
                       <td>{p.genre ?? '—'}</td>
@@ -603,6 +751,61 @@ export default function AdminPage() {
               </table>
             </div>
           </div>}
+
+          {prieresSubTab === 'importtxt' && (
+            <div className="admin-table-wrap" style={{ maxWidth: 720 }}>
+              <h2>Import TXT — Prières funéraires</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Collez le texte des prières funéraires ci-dessous (emojis, texte arabe inclus). Le fichier sera sauvegardé tel quel sur Google Drive.
+              </p>
+              <textarea
+                style={{
+                  width: '100%', minHeight: 320, padding: '0.75rem', fontFamily: 'inherit',
+                  fontSize: '0.9rem', borderRadius: 8, border: '1px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text)', resize: 'vertical',
+                  boxSizing: 'border-box', marginBottom: '0.75rem', lineHeight: 1.6,
+                }}
+                value={importTxtContent}
+                onChange={(e) => setImportTxtContent(e.target.value)}
+                placeholder={"🥀 PRIÈRES FUNÉRAIRES 🥀\n\n☪ MARDI 07 JUILLET 2026 ☪\n\n..."}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleImportTxt}
+                  disabled={!importTxtContent.trim() || importTxtLoading}
+                  style={{ opacity: (!importTxtContent.trim() || importTxtLoading) ? 0.6 : 1 }}
+                >
+                  {importTxtLoading ? 'Envoi en cours...' : '☁ Envoyer sur Drive'}
+                </button>
+                {importTxtContent.trim() && (
+                  <button className="btn btn-outline" onClick={() => { setImportTxtContent(''); setImportTxtResult(null); }}>
+                    Effacer
+                  </button>
+                )}
+              </div>
+              {importTxtResult && !importTxtResult.error && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: 'rgba(74,122,78,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.1rem' }}>✅</span>
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--success, #4a7a4e)' }}>Fichier sauvegardé sur Google Drive</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {importTxtResult.filename} —{' '}
+                      <a href={importTxtResult.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>
+                        Voir le fichier
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {importTxtResult?.error && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: 'rgba(220,38,38,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.1rem' }}>❌</span>
+                  <span style={{ color: 'var(--error, #dc2626)', fontWeight: 600 }}>{importTxtResult.error}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {prieresSubTab === 'enattente' && (
             <div className="admin-table-wrap">

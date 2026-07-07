@@ -6,6 +6,7 @@ import {
   UPDATE_MOSQUEE_SUCCESS, UPDATE_MOSQUEE_FAILURE,
   FETCH_PENDING_MOSQUEES_REQUEST, FETCH_PENDING_MOSQUEES_SUCCESS, FETCH_PENDING_MOSQUEES_FAILURE,
   VALIDER_MOSQUEE_SUCCESS, VALIDER_MOSQUEE_FAILURE,
+  REFUSER_MOSQUEE_SUCCESS,
 } from '../actions/mosqueeActions';
 
 const initialState = { list: [], pendingList: [], loading: false, pendingLoading: false, error: null };
@@ -62,6 +63,12 @@ export default function mosqueeReducer(state = initialState, action) {
 
     case VALIDER_MOSQUEE_FAILURE:
       return { ...state, error: action.payload };
+
+    case REFUSER_MOSQUEE_SUCCESS:
+      return {
+        ...state,
+        pendingList: state.pendingList.filter((m) => m.id !== action.payload),
+      };
 
     default:
       return state;
