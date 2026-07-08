@@ -3177,16 +3177,57 @@ img { max-width: 100%; }
   box-shadow: 0 0 0 3px rgba(107, 143, 94, 0.12);
 }
 .df-textarea { resize: vertical; min-height: 72px; }
-.df-input[type="datetime-local"] {
-  min-height: 2.8rem;
-  cursor: pointer;
+/* ── react-datepicker integration ── */
+.df-datepicker-wrap { position: relative; }
+.df-datepicker-wrap .react-datepicker-wrapper { width: 100%; }
+.df-datepicker-wrap .react-datepicker__input-container { width: 100%; }
+.df-datepicker-wrap .df-input { min-height: 2.8rem; cursor: pointer; }
+
+/* Calendar popup */
+.react-datepicker {
+  font-family: var(--font-ui);
+  border: 1.5px solid var(--green-border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  overflow: hidden;
 }
+.react-datepicker__header {
+  background: var(--green-bg);
+  border-bottom: 1px solid var(--green-border);
+}
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker__day-name { color: var(--green-dark); font-weight: 600; }
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__time-list-item--selected {
+  background-color: var(--green) !important;
+  color: #fff !important;
+  border-radius: 6px;
+}
+.react-datepicker__day:hover,
+.react-datepicker__time-list-item:hover {
+  background-color: var(--green-bg) !important;
+  border-radius: 6px;
+}
+.react-datepicker__day--today { font-weight: 700; color: var(--green-dark); }
+.react-datepicker__navigation-icon::before { border-color: var(--green); }
+.react-datepicker__time-container {
+  border-left: 1px solid var(--green-border);
+}
+.react-datepicker__time-list-item { font-size: 0.82rem; }
+
+/* RTL for Arabic */
+.df-datepicker-rtl .react-datepicker { direction: rtl; }
+.df-datepicker-rtl .react-datepicker__time-container { border-left: none; border-right: 1px solid var(--green-border); }
+
 @media (max-width: 480px) {
-  .df-input[type="datetime-local"] {
-    font-size: 1rem; /* iOS zoome si < 16px — on reste >= 1rem */
+  .df-datepicker-wrap .df-input {
+    font-size: 1rem;
     padding: 0.65rem 0.6rem;
     min-height: 3rem;
   }
+  .react-datepicker { font-size: 0.85rem; }
 }
 .df-row-2 {
   display: grid;

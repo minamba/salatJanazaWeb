@@ -297,6 +297,7 @@ export default function AdminPage() {
       anneeDeces:       p.anneeDeces ?? '',
       commentaire:      p.commentaire ?? '',
       paysEnterrement:  p.paysEnterrement ?? '',
+      countryKnown:     p.paysEnterrement != null,
       villeEnterrement: p.villeEnterrement ?? '',
     });
   };
@@ -312,7 +313,7 @@ export default function AdminPage() {
       anneeNaissance:   (!priereForm.noYearInfo && priereForm.anneeNaissance) ? parseInt(priereForm.anneeNaissance) : null,
       anneeDeces:       (!priereForm.noYearInfo && priereForm.anneeDeces) ? parseInt(priereForm.anneeDeces) : null,
       commentaire:      priereForm.commentaire || null,
-      paysEnterrement:  priereForm.paysEnterrement || null,
+      paysEnterrement:  priereForm.countryKnown ? (priereForm.paysEnterrement || null) : null,
       villeEnterrement: priereForm.villeEnterrement || null,
     }));
     setEditPriere(null);
@@ -758,17 +759,36 @@ export default function AdminPage() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
                 Collez le texte des prières funéraires ci-dessous (emojis, texte arabe inclus). Le fichier sera sauvegardé tel quel sur Google Drive.
               </p>
-              <textarea
-                style={{
-                  width: '100%', minHeight: 320, padding: '0.75rem', fontFamily: 'inherit',
-                  fontSize: '0.9rem', borderRadius: 8, border: '1px solid var(--border)',
-                  background: 'var(--surface)', color: 'var(--text)', resize: 'vertical',
-                  boxSizing: 'border-box', marginBottom: '0.75rem', lineHeight: 1.6,
-                }}
-                value={importTxtContent}
-                onChange={(e) => setImportTxtContent(e.target.value)}
-                placeholder={"🥀 PRIÈRES FUNÉRAIRES 🥀\n\n☪ MARDI 07 JUILLET 2026 ☪\n\n..."}
-              />
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  style={{
+                    width: '100%', minHeight: 320, padding: '0.75rem', fontFamily: 'inherit',
+                    fontSize: '0.9rem', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'var(--surface)', color: 'var(--text)', resize: 'vertical',
+                    boxSizing: 'border-box', marginBottom: '0.75rem', lineHeight: 1.6,
+                  }}
+                  value={importTxtContent}
+                  onChange={(e) => setImportTxtContent(e.target.value)}
+                  placeholder={"🥀 PRIÈRES FUNÉRAIRES 🥀\n\n☪ MARDI 07 JUILLET 2026 ☪\n\n..."}
+                />
+                {importTxtContent && (
+                  <button
+                    type="button"
+                    onClick={() => { setImportTxtContent(''); setImportTxtResult(null); }}
+                    style={{
+                      position: 'absolute', top: '0.5rem', right: '0.5rem',
+                      width: 22, height: 22, padding: 0, border: 'none', borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.18)', color: '#fff',
+                      fontSize: '0.75rem', lineHeight: 1, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                    aria-label="Effacer"
+                    title="Effacer le texte"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button
                   className="btn btn-primary"
@@ -778,11 +798,6 @@ export default function AdminPage() {
                 >
                   {importTxtLoading ? 'Envoi en cours...' : '☁ Envoyer sur Drive'}
                 </button>
-                {importTxtContent.trim() && (
-                  <button className="btn btn-outline" onClick={() => { setImportTxtContent(''); setImportTxtResult(null); }}>
-                    Effacer
-                  </button>
-                )}
               </div>
               {importTxtResult && !importTxtResult.error && (
                 <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: 'rgba(74,122,78,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1376,26 +1391,44 @@ export default function AdminPage() {
                 rows={3}
               />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Pays d'enterrement</label>
-                <input
-                  type="text"
-                  value={priereForm.paysEnterrement}
-                  onChange={(e) => setPriereForm((f) => ({ ...f, paysEnterrement: e.target.value }))}
-                  placeholder="France"
-                />
+            <div className="toggle-row">
+              <div>
+                <div className="toggle-label">Pays d'enterrement</div>
+                <div className="toggle-sub">
+                  {priereForm.countryKnown ? "Désactiver si le pays n'est pas connu" : "Le pays ne sera pas affiché dans l'annonce"}
+                </div>
               </div>
-              <div className="form-group">
-                <label>Lieu d'enterrement</label>
+              <label className="toggle-switch">
                 <input
-                  type="text"
-                  value={priereForm.villeEnterrement}
-                  onChange={(e) => setPriereForm((f) => ({ ...f, villeEnterrement: e.target.value }))}
-                  placeholder="Paris"
+                  type="checkbox"
+                  checked={priereForm.countryKnown}
+                  onChange={(e) => setPriereForm((f) => ({ ...f, countryKnown: e.target.checked }))}
                 />
-              </div>
+                <span className="toggle-knob" />
+              </label>
             </div>
+            {priereForm.countryKnown && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Pays d'enterrement</label>
+                  <input
+                    type="text"
+                    value={priereForm.paysEnterrement}
+                    onChange={(e) => setPriereForm((f) => ({ ...f, paysEnterrement: e.target.value }))}
+                    placeholder="France"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Lieu d'enterrement</label>
+                  <input
+                    type="text"
+                    value={priereForm.villeEnterrement}
+                    onChange={(e) => setPriereForm((f) => ({ ...f, villeEnterrement: e.target.value }))}
+                    placeholder="Paris"
+                  />
+                </div>
+              </div>
+            )}
             <div className="modal-footer">
               <button type="button" className="btn btn-outline" onClick={() => setEditPriere(null)}>Annuler</button>
               <button type="submit" className="btn btn-primary" disabled={pSaving}>

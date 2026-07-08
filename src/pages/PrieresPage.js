@@ -325,7 +325,7 @@ export default function PrieresPage() {
         </div>
       ) : (
         <div className="container prieres-page-content">
-          {loading && <p className="text-center text-muted" style={{ padding: '3rem 0' }}>{t('prieres.loading')}</p>}
+          {loading && list.length === 0 && <p className="text-center text-muted" style={{ padding: '3rem 0' }}>{t('prieres.loading')}</p>}
 
           {!loading && list.length === 0 && (
             <div className="empty-state">
@@ -342,7 +342,7 @@ export default function PrieresPage() {
             </div>
           )}
 
-          {!loading && list.length > 0 && (
+          {list.length > 0 && (
             <>
               <div className="prieres-count-row">
                 <span className="prieres-count">

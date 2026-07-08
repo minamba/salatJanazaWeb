@@ -30,6 +30,7 @@ export function buildInitialForm(priere) {
     anneeDeces:        priere.anneeDeces ?? '',
     commentaire:       priere.commentaire ?? '',
     paysEnterrement:   priere.paysEnterrement ?? '',
+    countryKnown:      priere.paysEnterrement != null,
     villeEnterrement:  priere.villeEnterrement ?? '',
     utcOffsetMinutes:  priere.utcOffsetMinutes ?? 0,
   };
@@ -38,7 +39,7 @@ export function buildInitialForm(priere) {
 export function buildPayload(form) {
   const prayerDate = form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z') : new Date();
   const utcOffsetMinutes = computeUtcOffsetMinutes(
-    form.paysEnterrement,
+    form.countryKnown ? form.paysEnterrement : '',
     form.utcOffsetMinutes ?? 0,
     prayerDate,
   );
@@ -51,7 +52,7 @@ export function buildPayload(form) {
     anneeNaissance:    (!form.noYearInfo && form.anneeNaissance) ? parseInt(form.anneeNaissance) : null,
     anneeDeces:        (!form.noYearInfo && form.anneeDeces) ? parseInt(form.anneeDeces) : null,
     commentaire:       form.commentaire || null,
-    paysEnterrement:   form.paysEnterrement || null,
+    paysEnterrement:   form.countryKnown ? (form.paysEnterrement || null) : null,
     villeEnterrement:  form.villeEnterrement || null,
     utcOffsetMinutes,
   };
@@ -172,26 +173,44 @@ export default function EditPriereModal({ priere, form, setForm, onClose, onSubm
                 rows={3}
               />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Pays d'enterrement</label>
-                <input
-                  type="text"
-                  value={form.paysEnterrement}
-                  onChange={(e) => setForm((f) => ({ ...f, paysEnterrement: e.target.value }))}
-                  placeholder="France"
-                />
+            <div className="toggle-row">
+              <div>
+                <div className="toggle-label">Pays d'enterrement</div>
+                <div className="toggle-sub">
+                  {form.countryKnown ? "Désactiver si le pays n'est pas connu" : "Le pays ne sera pas affiché dans l'annonce"}
+                </div>
               </div>
-              <div className="form-group">
-                <label>Lieu d'enterrement</label>
+              <label className="toggle-switch">
                 <input
-                  type="text"
-                  value={form.villeEnterrement}
-                  onChange={(e) => setForm((f) => ({ ...f, villeEnterrement: e.target.value }))}
-                  placeholder="Paris"
+                  type="checkbox"
+                  checked={form.countryKnown}
+                  onChange={(e) => setForm((f) => ({ ...f, countryKnown: e.target.checked }))}
                 />
-              </div>
+                <span className="toggle-knob" />
+              </label>
             </div>
+            {form.countryKnown && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Pays d'enterrement</label>
+                  <input
+                    type="text"
+                    value={form.paysEnterrement}
+                    onChange={(e) => setForm((f) => ({ ...f, paysEnterrement: e.target.value }))}
+                    placeholder="France"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Lieu d'enterrement</label>
+                  <input
+                    type="text"
+                    value={form.villeEnterrement}
+                    onChange={(e) => setForm((f) => ({ ...f, villeEnterrement: e.target.value }))}
+                    placeholder="Paris"
+                  />
+                </div>
+              </div>
+            )}
             {saveError && <div className="alert alert-error">{saveError}</div>}
             <div className="modal-footer">
               <button type="button" className="btn btn-outline" onClick={onClose}>Annuler</button>

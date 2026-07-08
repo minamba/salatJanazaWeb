@@ -3,12 +3,21 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { fr } from 'date-fns/locale/fr';
+import { ar } from 'date-fns/locale/ar';
+import { enGB } from 'date-fns/locale/en-GB';
 import { createPriere, resetCreatePriere, SHOW_JANAZA_TOAST } from '../../lib/actions/priereJanazaActions';
 import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeApi';
 import AvisDecesCard from '../../components/AvisDecesCard';
 import { capitalizeFirst } from '../../lib/utils';
 import { apiClient } from '../../lib/api/axiosConfig';
 import { computeUtcOffsetMinutes } from '../../lib/timezoneUtils';
+
+registerLocale('fr', fr);
+registerLocale('ar', ar);
+registerLocale('en', enGB);
 
 // ── Country list ──────────────────────────────────────────────────────────────
 const PAYS = [
@@ -30,6 +39,7 @@ const PAYS = [
 
 // ── Country search ────────────────────────────────────────────────────────────
 function CountrySearch({ value, onChange }) {
+  const { t } = useTranslation();
   const [query, setQuery]       = useState(value || '');
   const [open, setOpen]         = useState(false);
   const [filtered, setFiltered] = useState([]);
@@ -80,12 +90,12 @@ function CountrySearch({ value, onChange }) {
           value={query}
           onChange={handleChange}
           onFocus={() => query.length >= 1 && filtered.length > 0 && setOpen(true)}
-          placeholder="Rechercher un pays…"
+          placeholder={t('declare.country_placeholder')}
           autoComplete="off"
           className="mosque-search-input"
         />
         {query && (
-          <button type="button" className="mosque-search-clear" onClick={handleClear} aria-label="Effacer">✕</button>
+          <button type="button" className="mosque-search-clear" onClick={handleClear} aria-label={t('declare.clear')}>✕</button>
         )}
       </div>
       {open && filtered.length > 0 && (
@@ -216,14 +226,14 @@ function AddMosqueeForm({ onClose }) {
 
     const formatted = formatNomMosquee(nom.trim());
     if (!formatted || !hasValidMosquePrefix(formatted)) {
-      setNomError('Doit commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière ou Centre');
+      setNomError(t('declare.add_mosque_name_error'));
       hasError = true;
     } else {
       setNomError('');
     }
 
     if (!adresse.trim()) {
-      setAdresseError('Veuillez saisir une adresse');
+      setAdresseError(t('declare.add_mosque_addr_error_empty'));
       hasError = true;
     }
 
@@ -239,7 +249,7 @@ function AddMosqueeForm({ onClose }) {
         );
         const data = await res.json();
         if (!data.length) {
-          setAdresseError("Adresse introuvable. Précisez la ville ou le pays.");
+          setAdresseError(t('declare.add_mosque_addr_error_not_found'));
           setSaving(false);
           return;
         }
@@ -254,7 +264,7 @@ function AddMosqueeForm({ onClose }) {
       });
       setSubmitted(true);
     } catch {
-      setAdresseError("Erreur lors de l'envoi de la demande. Réessayez.");
+      setAdresseError(t('declare.add_mosque_send_error'));
     } finally {
       setSaving(false);
     }
@@ -264,13 +274,13 @@ function AddMosqueeForm({ onClose }) {
     return (
       <div className="add-mosquee-form">
         <div className="add-mosquee-form-header">
-          <span>Demande envoyée ✓</span>
+          <span>{t('declare.add_mosque_success_title')}</span>
           <button type="button" className="add-mosquee-close" onClick={onClose}>✕</button>
         </div>
         <p style={{ fontSize: '0.85rem', color: '#444', lineHeight: 1.5, marginBottom: '1rem' }}>
-          Votre demande a bien été reçue et sera analysée par un administrateur. La mosquée sera disponible après validation. Merci pour votre contribution !
+          {t('declare.add_mosque_success_body')}
         </p>
-        <button type="button" className="df-submit" onClick={onClose}>Fermer</button>
+        <button type="button" className="df-submit" onClick={onClose}>{t('declare.add_mosque_close')}</button>
       </div>
     );
   }
@@ -278,26 +288,26 @@ function AddMosqueeForm({ onClose }) {
   return (
     <div className="add-mosquee-form">
       <div className="add-mosquee-form-header">
-        <span>Ajouter une mosquée</span>
+        <span>{t('declare.add_mosque_title')}</span>
         <button type="button" className="add-mosquee-close" onClick={onClose}>✕</button>
       </div>
 
       <div className="add-mosquee-field">
-        <label className="add-mosquee-label">Nom <span className="df-required">*</span></label>
+        <label className="add-mosquee-label">{t('declare.add_mosque_name_label')} <span className="df-required">*</span></label>
         <input
           type="text"
           value={nom}
           onChange={(e) => { setNom(e.target.value); setNomError(''); }}
-          placeholder="Ex : Mosquée Al-Fath de Paris"
+          placeholder={t('declare.add_mosque_name_placeholder')}
           className="df-input"
           autoComplete="off"
         />
-        <p className="add-mosquee-hint">Commencer par : Mosquée, Grande Mosquée, Petite Mosquée, Salle de prière, Salle, Centre, Funérarium, Hôpital, Cimetière ou Clinique</p>
+        <p className="add-mosquee-hint">{t('declare.add_mosque_name_hint')}</p>
         {nomError && <p className="add-mosquee-error">{nomError}</p>}
       </div>
 
       <div className="add-mosquee-field">
-        <label className="add-mosquee-label">Adresse <span className="df-required">*</span></label>
+        <label className="add-mosquee-label">{t('declare.add_mosque_addr_label')} <span className="df-required">*</span></label>
         <p className="add-mosquee-warning">
           {t('mosquee.add_autocomplete_hint')}
         </p>
@@ -307,7 +317,7 @@ function AddMosqueeForm({ onClose }) {
             value={adresse}
             onChange={handleAdresseChange}
             onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-            placeholder="Ex : 12 rue de la Paix, Paris"
+            placeholder={t('declare.add_mosque_addr_placeholder')}
             className="df-input"
             autoComplete="off"
             style={loadingSugg ? { paddingRight: '2.5rem' } : {}}
@@ -328,12 +338,12 @@ function AddMosqueeForm({ onClose }) {
             </ul>
           )}
         </div>
-        {coords && <p className="add-mosquee-coords">✓ Position confirmée</p>}
+        {coords && <p className="add-mosquee-coords">{t('declare.add_mosque_addr_confirmed')}</p>}
         {adresseError && <p className="add-mosquee-error">{adresseError}</p>}
       </div>
 
       <button type="button" className="df-submit" onClick={handleSubmit} disabled={saving}>
-        {saving ? 'Ajout en cours…' : 'Ajouter la mosquée'}
+        {saving ? t('declare.add_mosque_submitting') : t('declare.add_mosque_submit')}
       </button>
     </div>
   );
@@ -341,6 +351,7 @@ function AddMosqueeForm({ onClose }) {
 
 // ── Mosque autocomplete (DB search — same as mobile) ─────────────────────────
 function MosqueeSearch({ onSelect, onClear, onAddRequested }) {
+  const { t } = useTranslation();
   const [query, setQuery]             = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading]         = useState(false);
@@ -406,13 +417,13 @@ function MosqueeSearch({ onSelect, onClear, onAddRequested }) {
           value={query}
           onChange={handleChange}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder="Rechercher une mosquée par nom ou ville…"
+          placeholder={t('declare.mosque_placeholder')}
           autoComplete="off"
           className="mosque-search-input"
         />
         {loading && <span className="mosque-search-spinner" />}
         {query && (
-          <button type="button" className="mosque-search-clear" onClick={handleClear} aria-label="Effacer">✕</button>
+          <button type="button" className="mosque-search-clear" onClick={handleClear} aria-label={t('declare.clear')}>✕</button>
         )}
       </div>
       {open && suggestions.length > 0 && (
@@ -436,7 +447,7 @@ function MosqueeSearch({ onSelect, onClear, onAddRequested }) {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            Mosquée non trouvée — elle n'est peut-être pas encore répertoriée.
+            {t('declare.mosque_not_found')}
           </div>
           {onAddRequested && (
             <button
@@ -444,7 +455,7 @@ function MosqueeSearch({ onSelect, onClear, onAddRequested }) {
               className="mosque-search-add-btn"
               onMouseDown={(e) => { e.preventDefault(); setOpen(false); onAddRequested(); }}
             >
-              + Ajouter cette mosquée
+              {t('declare.mosque_add_btn')}
             </button>
           )}
         </div>
@@ -468,6 +479,7 @@ function YearSelect({ value, onChange, placeholder }) {
 
 // ── Preview modal ─────────────────────────────────────────────────────────────
 function PreviewModal({ data, onClose }) {
+  const { t } = useTranslation();
   const cardRef   = useRef(null);
   const [busy, setBusy] = useState(false);
   const [iosImg, setIosImg] = useState(null);
@@ -525,16 +537,16 @@ function PreviewModal({ data, onClose }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            {iosImg ? 'Retour au flyer' : 'Retour'}
+            {iosImg ? t('declare.preview_back_flyer') : t('declare.preview_back')}
           </button>
-          <span className="preview-modal-title">{iosImg ? 'Enregistrer' : 'Aperçu'}</span>
+          <span className="preview-modal-title">{iosImg ? t('declare.preview_save_title') : t('declare.preview_title')}</span>
           {iosImg ? <span /> : (
             <button className="preview-modal-share btn-sm" onClick={share} disabled={busy}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
               </svg>
-              Partager
+              {t('declare.preview_share')}
             </button>
           )}
         </div>
@@ -542,7 +554,7 @@ function PreviewModal({ data, onClose }) {
         {iosImg ? (
           <div className="preview-modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
             <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#555', margin: 0 }}>
-              Appuyez longuement sur l'image pour l'enregistrer dans votre galerie 📷
+              {t('declare.preview_ios_hint')}
             </p>
             <img src={iosImg} alt="Avis de décès" style={{ maxWidth: '100%', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }} />
           </div>
@@ -555,7 +567,7 @@ function PreviewModal({ data, onClose }) {
         <div className="preview-modal-footer">
           {!iosImg && (
             <button className="btn btn-primary" onClick={download} disabled={busy}>
-              {busy ? 'Génération…' : '⬇ Télécharger en PNG'}
+              {busy ? t('declare.preview_generating') : t('declare.preview_download')}
             </button>
           )}
         </div>
@@ -565,8 +577,15 @@ function PreviewModal({ data, onClose }) {
 }
 
 // ── Main form ─────────────────────────────────────────────────────────────────
+function toDatetimeLocal(date) {
+  // Converts a JS Date to "YYYY-MM-DDTHH:MM" using LOCAL time values.
+  // This mirrors what <input type="datetime-local"> produces natively.
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function DeclarePriereForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
@@ -584,6 +603,7 @@ export default function DeclarePriereForm() {
     anneNaissance:   '',
     anneDeces:       String(new Date().getFullYear()),
     paysEnterrement: '',
+    countryKnown:    true,
     villeEnterrement:'',
     relation:        '',
     nomsProches:     '',
@@ -639,7 +659,7 @@ export default function DeclarePriereForm() {
     e.preventDefault();
     if (!selectedMosquee) return;
     if (!form.estAnonyme && !form.nomDefunt?.trim()) {
-      setSubmitError('Veuillez saisir le nom et prénom du défunt, ou activez "Rester anonyme".');
+      setSubmitError(t('declare.error_name_required'));
       return;
     }
     setSubmitting(true);
@@ -652,13 +672,14 @@ export default function DeclarePriereForm() {
       const proposedDate = new Date(form.dateHeurePriere + 'Z');
       const proposedDay = `${proposedDate.getUTCFullYear()}-${proposedDate.getUTCMonth()}-${proposedDate.getUTCDate()}`;
       const proposedHour = proposedDate.getUTCHours();
+      const proposedMinute = proposedDate.getUTCMinutes();
       const proposedMosqueeId = Number(selectedMosquee.id);
 
       const sameHourConflict = existingPrieres.find((p) => {
         if (!p.dateHeurePriere) return false;
         const d = new Date(p.dateHeurePriere);
         const day = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-        return Number(p.mosqueeId) === proposedMosqueeId && day === proposedDay && d.getUTCHours() === proposedHour;
+        return Number(p.mosqueeId) === proposedMosqueeId && day === proposedDay && d.getUTCHours() === proposedHour && d.getUTCMinutes() === proposedMinute;
       });
 
       if (sameHourConflict) {
@@ -666,8 +687,8 @@ export default function DeclarePriereForm() {
           && norm(sameHourConflict.nomDefunt) === norm(form.nomDefunt);
         setSubmitError(
           isExactDuplicate
-            ? 'Une janaza a déjà été déclarée pour cette personne dans cette mosquée à cette heure.'
-            : 'Une salat janaza est déjà programmée pour cette heure dans cette mosquée.'
+            ? t('declare.error_exact_duplicate')
+            : t('declare.error_time_conflict')
         );
         setSubmitting(false);
         return;
@@ -677,7 +698,7 @@ export default function DeclarePriereForm() {
     const mosqueeId = selectedMosquee.id;
     const prayerDate = form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z') : new Date();
     const utcOffsetMinutes = computeUtcOffsetMinutes(
-      form.paysEnterrement,
+      form.countryKnown ? form.paysEnterrement : '',
       selectedMosquee.longitude,
       prayerDate,
     );
@@ -690,7 +711,7 @@ export default function DeclarePriereForm() {
       genre:            form.genre || null,
       dateHeurePriere:  form.dateHeurePriere ? prayerDate.toISOString() : null,
       commentaire:      form.commentaire || null,
-      paysEnterrement:  form.paysEnterrement || null,
+      paysEnterrement:  form.countryKnown ? (form.paysEnterrement || null) : null,
       villeEnterrement: form.villeEnterrement || null,
       utcOffsetMinutes,
     }));
@@ -705,7 +726,7 @@ export default function DeclarePriereForm() {
     showYears:        form.showYears,
     anneNaissance:    form.anneNaissance,
     anneDeces:        form.anneDeces,
-    paysEnterrement:  form.paysEnterrement,
+    paysEnterrement:  form.countryKnown ? form.paysEnterrement : '',
     villeEnterrement: form.villeEnterrement,
     commentaire:      form.commentaire,
     mosqueeNom:       selectedMosquee?.nom,
@@ -792,9 +813,9 @@ export default function DeclarePriereForm() {
   };
 
   const GENRES = [
-    { value: 'homme',  label: 'Homme',  icon: '♂' },
-    { value: 'femme',  label: 'Femme',  icon: '♀' },
-    { value: 'enfant', label: 'Enfant', icon: '✦' },
+    { value: 'homme',  label: t('declare.genre_homme'),  icon: '♂' },
+    { value: 'femme',  label: t('declare.genre_femme'),  icon: '♀' },
+    { value: 'enfant', label: t('declare.genre_enfant'), icon: '✦' },
   ];
 
   return (
@@ -807,8 +828,8 @@ export default function DeclarePriereForm() {
             <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
           </svg>
           <div>
-            <div className="df-card-title">Déclarer une prière janaza</div>
-            <div className="df-card-sub">Informez la communauté d'une prière funèbre</div>
+            <div className="df-card-title">{t('declare.form_title')}</div>
+            <div className="df-card-sub">{t('declare.form_subtitle')}</div>
           </div>
         </div>
 
@@ -820,7 +841,7 @@ export default function DeclarePriereForm() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.3 8 13 8 13s8-7.7 8-13a8 8 0 0 0-8-8z"/>
               </svg>
-              Mosquée <span className="df-required">*</span>
+              {t('declare.section_mosque')} <span className="df-required">*</span>
             </div>
             <MosqueeSearch
               onSelect={handleMosqueeSelect}
@@ -849,9 +870,26 @@ export default function DeclarePriereForm() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              Date et heure <span className="df-required">*</span>
+              {t('declare.section_datetime')} <span className="df-required">*</span>
             </div>
-            <input className="df-input" type="datetime-local" value={form.dateHeurePriere} onChange={set('dateHeurePriere')} required />
+            <div className={`df-datepicker-wrap${i18n.language === 'ar' ? ' df-datepicker-rtl' : ''}`}>
+              <DatePicker
+                selected={form.dateHeurePriere ? new Date(form.dateHeurePriere) : null}
+                onChange={(date) => {
+                  if (!date) { setForm(f => ({ ...f, dateHeurePriere: '' })); return; }
+                  setForm(f => ({ ...f, dateHeurePriere: toDatetimeLocal(date) }));
+                }}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="dd/MM/yyyy HH:mm"
+                locale={i18n.language === 'ar' ? 'ar' : i18n.language === 'en' ? 'en' : 'fr'}
+                className="df-input"
+                placeholderText={t('declare.date_placeholder')}
+                popperPlacement="bottom-start"
+                autoComplete="off"
+              />
+            </div>
           </div>
 
           {/* ── Section : Défunt ── */}
@@ -860,7 +898,7 @@ export default function DeclarePriereForm() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
-              Défunt(e)
+              {t('declare.section_defunt')}
             </div>
 
             {/* Genre pills */}
@@ -877,21 +915,21 @@ export default function DeclarePriereForm() {
             <label className="df-checkbox-row">
               <input type="checkbox" checked={form.estAnonyme} onChange={set('estAnonyme')} />
               <span className="df-checkbox-box" />
-              <span>Défunt(e) anonyme</span>
+              <span>{t('declare.defunt_anonymous_check')}</span>
             </label>
 
             {/* Nom */}
             {!form.estAnonyme && (
               <div style={{ marginTop: '0.75rem' }}>
-                <label className="df-label">Nom du défunt</label>
-                <input className="df-input" type="text" value={form.nomDefunt} onChange={set('nomDefunt')} placeholder="Prénom Nom" />
+                <label className="df-label">{t('declare.defunt_name_label')}</label>
+                <input className="df-input" type="text" value={form.nomDefunt} onChange={set('nomDefunt')} placeholder={t('declare.defunt_name_placeholder')} />
               </div>
             )}
 
             {/* Commentaire */}
             <div style={{ marginTop: '0.75rem' }}>
-              <label className="df-label">Commentaire <span className="df-opt">(facultatif)</span></label>
-              <textarea className="df-input df-textarea" value={form.commentaire} onChange={set('commentaire')} placeholder="Informations supplémentaires…" rows={3} />
+              <label className="df-label">{t('declare.comment_label')} <span className="df-opt">({t('declare.comment_optional')})</span></label>
+              <textarea className="df-input df-textarea" value={form.commentaire} onChange={set('commentaire')} placeholder={t('declare.comment_placeholder')} rows={3} />
             </div>
           </div>
 
@@ -901,8 +939,8 @@ export default function DeclarePriereForm() {
             {/* Toggle années */}
             <div className="toggle-row">
               <div>
-                <div className="toggle-label">Années de naissance et de décès</div>
-                <div className="toggle-sub">Désactiver si vous n'avez pas cette information</div>
+                <div className="toggle-label">{t('declare.years_label')}</div>
+                <div className="toggle-sub">{t('declare.years_sub')}</div>
               </div>
               <label className="toggle-switch">
                 <input type="checkbox" checked={form.showYears} onChange={set('showYears')} />
@@ -913,31 +951,44 @@ export default function DeclarePriereForm() {
             {form.showYears && (
               <div className="df-row-2">
                 <div>
-                  <label className="df-label">Naissance</label>
-                  <YearSelect value={form.anneNaissance} onChange={setVal('anneNaissance')} placeholder="Année" />
+                  <label className="df-label">{t('declare.year_birth')}</label>
+                  <YearSelect value={form.anneNaissance} onChange={setVal('anneNaissance')} placeholder={t('declare.year_placeholder')} />
                 </div>
                 <div>
-                  <label className="df-label">Décès</label>
-                  <YearSelect value={form.anneDeces} onChange={setVal('anneDeces')} placeholder="Année" />
+                  <label className="df-label">{t('declare.year_death')}</label>
+                  <YearSelect value={form.anneDeces} onChange={setVal('anneDeces')} placeholder={t('declare.year_placeholder')} />
                 </div>
               </div>
             )}
 
-            <div style={{ marginTop: '0.85rem' }}>
-              <label className="df-label">Pays d'enterrement</label>
-              <CountrySearch value={form.paysEnterrement} onChange={setVal('paysEnterrement')} />
+            <div className="toggle-row" style={{ marginTop: '0.85rem' }}>
+              <div>
+                <div className="toggle-label">{t('declare.country_label')}</div>
+                <div className="toggle-sub">
+                  {form.countryKnown ? t('declare.country_sub_on') : t('declare.country_sub_off')}
+                </div>
+              </div>
+              <label className="toggle-switch">
+                <input type="checkbox" checked={form.countryKnown} onChange={set('countryKnown')} />
+                <span className="toggle-knob" />
+              </label>
             </div>
+            {form.countryKnown && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <CountrySearch value={form.paysEnterrement} onChange={setVal('paysEnterrement')} />
+              </div>
+            )}
 
             <div style={{ marginTop: '0.75rem' }}>
-              <label className="df-label">Ville / lieu <span className="df-opt">(optionnel)</span></label>
-              <input className="df-input" type="text" value={form.villeEnterrement} onChange={set('villeEnterrement')} placeholder="Ex : Évry, Aunettes…" />
+              <label className="df-label">{t('declare.city_label')} <span className="df-opt">({t('declare.city_optional')})</span></label>
+              <input className="df-input" type="text" value={form.villeEnterrement} onChange={set('villeEnterrement')} placeholder={t('declare.city_placeholder')} />
             </div>
 
             <button type="button" className="btn-preview-avis" onClick={() => setShowPreview(true)} disabled={!canPreview}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
-              Prévisualiser l'annonce
+              {t('declare.btn_preview')}
             </button>
           </div>
 
@@ -952,14 +1003,14 @@ export default function DeclarePriereForm() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="df-spin">
                   <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
                 </svg>
-                Déclaration en cours…
+                {t('declare.btn_submitting')}
               </>
             ) : (
               <>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
                 </svg>
-                Déclarer la prière
+                {t('declare.btn_submit')}
               </>
             )}
           </button>
