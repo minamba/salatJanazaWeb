@@ -1,5 +1,7 @@
+import { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { computeUtcOffsetMinutes } from '../../lib/timezoneUtils';
+import { searchMosquees } from '../../lib/api/mosqueeApi';
 
 export function toLocalDatetimeInput(utcStr) {
   // On affiche l'heure UTC telle quelle dans le champ datetime-local (pas de conversion locale)
@@ -58,8 +60,110 @@ export function buildPayload(form) {
   };
 }
 
+function MosqueeSearchField({ defaultName, onSelect, onClear }) {
+  const [query, setQuery]             = useState(defaultName ?? '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading]         = useState(false);
+  const [open, setOpen]               = useState(false);
+  const timerRef  = useRef(null);
+  const latestRef = useRef('');
+  const wrapRef   = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setQuery(val);
+    latestRef.current = val;
+    onClear();
+    clearTimeout(timerRef.current);
+    if (val.trim().length < 2) { setSuggestions([]); setOpen(false); setLoading(false); return; }
+    setLoading(true);
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await searchMosquees(val.trim());
+        if (latestRef.current === val) {
+          setSuggestions(Array.isArray(res.data) ? res.data : []);
+          setOpen(true);
+        }
+      } catch {
+        if (latestRef.current === val) setSuggestions([]);
+      } finally {
+        if (latestRef.current === val) setLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (m) => {
+    setQuery(m.nom);
+    setSuggestions([]);
+    setOpen(false);
+    onSelect(m);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    setSuggestions([]);
+    setOpen(false);
+    onClear();
+  };
+
+  return (
+    <div className="mosque-search-wrap" ref={wrapRef}>
+      <div className="mosque-search-input-row">
+        <svg className="mosque-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          placeholder="Rechercher par nom, ville ou code postal…"
+          autoComplete="off"
+          className="mosque-search-input"
+        />
+        {loading && <span className="mosque-search-spinner" />}
+        {query && (
+          <button type="button" className="mosque-search-clear" onClick={handleClear} aria-label="Effacer">✕</button>
+        )}
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul className="mosque-search-list">
+          {suggestions.map((s) => (
+            <li key={s.id} className="mosque-search-item" onMouseDown={() => handleSelect(s)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.3 8 13 8 13s8-7.7 8-13a8 8 0 0 0-8-8z"/>
+              </svg>
+              <span>
+                <span className="mosque-search-name">{s.nom}</span>
+                {s.adresse && <span className="mosque-search-addr">{s.adresse}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && !loading && query.trim().length >= 2 && suggestions.length === 0 && (
+        <div className="mosque-search-noresult">
+          <div className="mosque-search-noresult-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Aucune mosquée trouvée
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EditPriereModal({ priere, form, setForm, onClose, onSubmit }) {
-  const { list: mosquees } = useSelector((s) => s.mosquee);
   const { saving, saveError } = useSelector((s) => s.priereJanaza);
 
   return (
@@ -102,12 +206,11 @@ export default function EditPriereModal({ priere, form, setForm, onClose, onSubm
             </div>
             <div className="form-group">
               <label>Mosquée</label>
-              <select value={form.mosqueeId} onChange={(e) => setForm((f) => ({ ...f, mosqueeId: e.target.value }))}>
-                <option value="">— Sélectionner une mosquée —</option>
-                {mosquees.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nom}</option>
-                ))}
-              </select>
+              <MosqueeSearchField
+                defaultName={priere.mosqueeNom ?? ''}
+                onSelect={(m) => setForm((f) => ({ ...f, mosqueeId: m.id }))}
+                onClear={() => setForm((f) => ({ ...f, mosqueeId: '' }))}
+              />
             </div>
             <div className="form-group">
               <label>Date et heure *</label>
