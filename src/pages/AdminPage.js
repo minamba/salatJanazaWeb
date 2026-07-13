@@ -10,6 +10,7 @@ import {
   deleteUtilisateur,
 } from '../lib/actions/utilisateurActions';
 import { apiClient } from '../lib/api/axiosConfig';
+import { formatNomDefunt } from '../lib/utils';
 
 // ─── Modal shell ─────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
@@ -828,7 +829,7 @@ export default function AdminPage() {
                         </td>
                       )}
                       <td>{p.id}</td>
-                      <td>{p.estAnonyme ? <em>Anonyme</em> : (p.nomDefunt ?? '—')}</td>
+                      <td>{p.estAnonyme ? <em>Anonyme</em> : (formatNomDefunt(p.nomDefunt) || '—')}</td>
                       <td>{p.genre ?? '—'}</td>
                       <td>{p.mosqueeNom ?? '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
@@ -951,7 +952,7 @@ export default function AdminPage() {
                     {prieresEnAttente.map((p) => (
                       <tr key={p.id}>
                         <td>{p.id}</td>
-                        <td>{p.estAnonyme ? <em>Anonyme</em> : (p.nomDefunt ?? '—')}</td>
+                        <td>{p.estAnonyme ? <em>Anonyme</em> : (formatNomDefunt(p.nomDefunt) || '—')}</td>
                         <td>{p.genre ?? '—'}</td>
                         <td>
                           <span style={{ color: 'var(--warning, #b45309)', fontWeight: 500 }}>{p.mosqueeNom ?? '—'}</span>

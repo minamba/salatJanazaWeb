@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { dismissJanazaToast } from '../lib/actions/priereJanazaActions';
-import { capitalizeFirst } from '../lib/utils';
+import { capitalizeFirst, formatNomDefunt } from '../lib/utils';
 
 const JOURS  = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const MOIS   = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
@@ -21,7 +21,7 @@ function defuntLabel(p) {
     return 'Un frère de la communauté';
   }
   const civilite = g === 'femme' ? 'Mme.' : g === 'homme' ? 'M.' : '';
-  const nom = p.nomDefunt ? p.nomDefunt.toUpperCase() : '';
+  const nom = p.nomDefunt ? formatNomDefunt(p.nomDefunt).toUpperCase() : '';
   return civilite ? `${civilite} ${nom}` : nom;
 }
 

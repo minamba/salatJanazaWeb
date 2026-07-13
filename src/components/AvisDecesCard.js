@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import mosqueeImg    from '../assets/icon3.png';
 import invocationImg from '../assets/invocation.png';
-import { capitalizeFirst } from '../lib/utils';
+import { capitalizeFirst, parseNomDefunt } from '../lib/utils';
 
 // Preposition logic — French only
 const PAYS_AU = new Set([
@@ -77,7 +77,7 @@ const AvisDecesCard = forwardRef(({ data }, ref) => {
     } else {
       civilite = isF ? 'Mme.' : g === 'homme' ? 'M.' : '';
     }
-    const nom = nomDefunt || '';
+    const nom = parseNomDefunt(nomDefunt ?? '').display;
     nomDisplay = civilite ? `${civilite} ${nom.toUpperCase()}` : nom.toUpperCase();
     sousNom = null;
   }

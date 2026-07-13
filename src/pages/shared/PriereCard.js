@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
-import { capitalizeFirst } from '../../lib/utils';
+import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../../lib/utils';
 import hommeImg from '../../assets/homme.png';
 import femmeImg from '../../assets/femme.png';
 import enfantImg from '../../assets/enfant.png';
@@ -112,7 +112,7 @@ function AvisDecesModal({ priere, onClose }) {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
-  const nomFamille = rawNom.trim().split(/\s+/)[0] ?? '';
+  const nomFamille = parseNomDefunt(rawNom).familleNom;
   const hasYears = !!(priere.anneeNaissance && priere.anneeDeces);
 
   const cardData = {
@@ -204,7 +204,7 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
   const genreImg = genreKey ? (GENRE_IMG[genreKey] ?? null) : null;
   const genreLabel = genreKey ? t(`card.genre.${genreKey}`, { defaultValue: priere.genre }) : null;
 
-  const nom = priere.estAnonyme ? t('card.anonymous') : (priere.nomDefunt ?? t('card.unknown'));
+  const nom = priere.estAnonyme ? t('card.anonymous') : (formatNomDefunt(priere.nomDefunt) || t('card.unknown'));
 
   const distance = (userPos && priere.mosqueeLatitude && priere.mosqueeLongitude)
     ? haversineKm(userPos[0], userPos[1], priere.mosqueeLatitude, priere.mosqueeLongitude)

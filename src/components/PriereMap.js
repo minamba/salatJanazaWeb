@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import html2canvas from 'html2canvas';
-import { capitalizeFirst } from '../lib/utils';
+import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../lib/utils';
 import { deletePriere } from '../lib/actions/priereJanazaActions';
 import AvisDecesCard from './AvisDecesCard';
 import 'leaflet/dist/leaflet.css';
@@ -181,7 +181,7 @@ function ShareModal({ priere, onClose }) {
   const [sharing, setSharing] = useState(false);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
-  const nomFamille = rawNom.trim().split(/\s+/)[0] ?? '';
+  const nomFamille = parseNomDefunt(rawNom).familleNom;
   const hasYears = !!(priere.anneeNaissance && priere.anneeDeces);
 
   const cardData = {
@@ -287,7 +287,7 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                       : <div className="mpp-avatar-placeholder">?</div>}
                   </div>
                   <div className="mpp-info">
-                    <span className="mpp-nom">{p.estAnonyme ? 'Anonyme' : (p.nomDefunt ?? 'Inconnu(e)')}</span>
+                    <span className="mpp-nom">{p.estAnonyme ? 'Anonyme' : (formatNomDefunt(p.nomDefunt) || 'Inconnu(e)')}</span>
                     {genreLabel && <span className="mpp-genre">{genreLabel}</span>}
                   </div>
                   <span className={`mpp-statut mpp-statut-${STATUT_CLS[p.statut] ?? ''}`}>
