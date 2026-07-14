@@ -1,34 +1,66 @@
 import { useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDeclareModal } from '../context/DeclareModalContext';
 import { apiClient } from '../lib/api/axiosConfig';
+import EditPriereModal from '../pages/shared/EditPriereModal';
+import { buildInitialForm, buildPayload } from '../pages/shared/EditPriereModal';
+import { updatePriere } from '../lib/actions/priereJanazaActions';
 
 export default function DeclareChoiceModal() {
   const { open, closeModal } = useDeclareModal();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const dispatch = useDispatch();
   const user = useSelector(s => s.auth.user);
   const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
 
   const fileInputRef = useRef(null);
   const pollRef = useRef(null);
+  const fallbackPollRef = useRef(null);
+  const declMaxIdRef = useRef(0);
 
   const [view, setView] = useState('choice'); // 'choice' | 'loading' | 'success' | 'error'
   const [loadingMsg, setLoadingMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [timeUnknown, setTimeUnknown] = useState(false);
+  const [importedPriere, setImportedPriere] = useState(null);
+  const [priereForm, setPriereForm] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
 
   if (!open) return null;
 
   function resetAndClose() {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (fallbackPollRef.current) { clearInterval(fallbackPollRef.current); fallbackPollRef.current = null; }
+    declMaxIdRef.current = 0;
     setView('choice');
     setLoadingMsg('');
     setErrorMsg('');
     setTimeUnknown(false);
+    setImportedPriere(null);
+    setPriereForm({});
+    setShowEditModal(false);
     closeModal();
+  }
+
+  function applySuccess(tu) {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (fallbackPollRef.current) { clearInterval(fallbackPollRef.current); fallbackPollRef.current = null; }
+    setTimeUnknown(!!tu);
+    setView('success');
+    if (user?.dbId) {
+      apiClient.get(`/api/prierejanaza/utilisateur/${user.dbId}`)
+        .then(res => {
+          if (res.data?.length > 0) {
+            const latest = [...res.data].sort((a, b) => b.id - a.id)[0];
+            setImportedPriere(latest);
+            setPriereForm(buildInitialForm(latest));
+          }
+        })
+        .catch(() => {});
+    }
   }
 
   function handleSaisie() {
@@ -60,6 +92,12 @@ export default function DeclareChoiceModal() {
     setView('loading');
 
     try {
+      // Mémorise le max ID avant import pour le polling de secours
+      try {
+        const snap = await apiClient.get(`/api/prierejanaza/utilisateur/${user.dbId}`);
+        declMaxIdRef.current = snap.data?.length > 0 ? Math.max(...snap.data.map(d => d.id)) : 0;
+      } catch { declMaxIdRef.current = 0; }
+
       const fd = new FormData();
       fd.append('file', file);
       fd.append('utilisateurId', String(user.dbId));
@@ -72,31 +110,40 @@ export default function DeclareChoiceModal() {
 
       setLoadingMsg(t('declare.import_processing'));
 
+      // Polling principal sur l'endpoint status (1500ms pour ne pas rater la fenêtre courte)
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
         try {
           const statusResp = await apiClient.get(`/api/flyer/import-status/${importToken}`);
           const { status: s, message, errorCode, timeUnknown: tu } = statusResp.data;
           if (s === 'success') {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-            setTimeUnknown(!!tu);
-            setView('success');
+            applySuccess(tu);
           } else if (s === 'error') {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (fallbackPollRef.current) { clearInterval(fallbackPollRef.current); fallbackPollRef.current = null; }
             setErrorMsg(errorCode === 'IMAGE_QUALITY'
               ? t('declare.import_image_quality')
               : (message || t('declare.import_error_generic')));
             setView('error');
           }
         } catch (_) {}
-      }, 3000);
+      }, 1500);
+
+      // Polling de secours : vérifie toutes les 8s si une nouvelle déclaration est apparue
+      fallbackPollRef.current = setInterval(async () => {
+        if (!pollRef.current) { clearInterval(fallbackPollRef.current); fallbackPollRef.current = null; return; }
+        try {
+          const res = await apiClient.get(`/api/prierejanaza/utilisateur/${user.dbId}`);
+          const maxId = res.data?.length > 0 ? Math.max(...res.data.map(d => d.id)) : 0;
+          if (maxId > declMaxIdRef.current) applySuccess(false);
+        } catch (_) {}
+      }, 8000);
 
       setTimeout(() => {
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
+          if (fallbackPollRef.current) { clearInterval(fallbackPollRef.current); fallbackPollRef.current = null; }
           setErrorMsg(t('declare.import_timeout'));
           setView('error');
         }
@@ -109,6 +156,14 @@ export default function DeclareChoiceModal() {
   }
 
   function handleGoToDeclarations() {
+    resetAndClose();
+    navigate('/tableau-de-bord');
+  }
+
+  function handleSavePriere(e) {
+    e.preventDefault();
+    if (!importedPriere) return;
+    dispatch(updatePriere(importedPriere.id, buildPayload(priereForm)));
     resetAndClose();
     navigate('/tableau-de-bord');
   }
@@ -215,8 +270,11 @@ export default function DeclareChoiceModal() {
             </div>
 
             <div className="dc-success-actions">
-              <button className="btn btn-primary" onClick={handleGoToDeclarations}>
-                {t('dashboard.my_prayers')}
+              <button className="btn btn-primary" onClick={() => {
+                if (importedPriere) setShowEditModal(true);
+                else handleGoToDeclarations();
+              }}>
+                {t('declare.import_view_declaration')}
               </button>
               <button className="btn btn-outline" onClick={resetAndClose}>
                 {t('declare.import_verify_close')}
@@ -248,6 +306,17 @@ export default function DeclareChoiceModal() {
           onChange={handleFileSelected}
         />
       </div>
+
+      {/* ── Modal d'édition de la déclaration importée ── */}
+      {showEditModal && importedPriere && (
+        <EditPriereModal
+          priere={importedPriere}
+          form={priereForm}
+          setForm={setPriereForm}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={handleSavePriere}
+        />
+      )}
     </div>
   );
 }

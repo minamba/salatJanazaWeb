@@ -621,6 +621,8 @@ export default function DeclarePriereForm() {
   const [importTimeUnknown,  setImportTimeUnknown]  = useState(false);
   const importFileRef = useRef(null);
   const importPollRef = useRef(null);
+  const importFallbackPollRef = useRef(null);
+  const importDeclMaxIdRef = useRef(0);
 
   const set = (field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -765,33 +767,54 @@ export default function DeclarePriereForm() {
       });
       const { importToken } = uploadResp.data;
 
+      // Mémorise le max ID avant import pour le polling de secours
+      try {
+        const snap = await apiClient.get(`/api/prierejanaza/utilisateur/${user.dbId}`);
+        importDeclMaxIdRef.current = snap.data?.length > 0 ? Math.max(...snap.data.map(d => d.id)) : 0;
+      } catch { importDeclMaxIdRef.current = 0; }
+
+      function applyImportSuccess(timeUnknown) {
+        if (importPollRef.current) { clearInterval(importPollRef.current); importPollRef.current = null; }
+        if (importFallbackPollRef.current) { clearInterval(importFallbackPollRef.current); importFallbackPollRef.current = null; }
+        setImportLoading(false);
+        setImportStatus('success');
+        setImportMessage(t('declare.import_success'));
+        setImportTimeUnknown(!!timeUnknown);
+        setShowImportVerify(true);
+      }
+
       if (importPollRef.current) clearInterval(importPollRef.current);
       importPollRef.current = setInterval(async () => {
         try {
           const statusResp = await apiClient.get(`/api/flyer/import-status/${importToken}`);
           const { status: s, message, errorCode, timeUnknown } = statusResp.data;
           if (s === 'success') {
-            clearInterval(importPollRef.current);
-            importPollRef.current = null;
-            setImportLoading(false);
-            setImportStatus('success');
-            setImportMessage(t('declare.import_success'));
-            setImportTimeUnknown(!!timeUnknown);
-            setShowImportVerify(true);
+            applyImportSuccess(timeUnknown);
           } else if (s === 'error') {
-            clearInterval(importPollRef.current);
-            importPollRef.current = null;
+            if (importPollRef.current) { clearInterval(importPollRef.current); importPollRef.current = null; }
+            if (importFallbackPollRef.current) { clearInterval(importFallbackPollRef.current); importFallbackPollRef.current = null; }
             setImportLoading(false);
             setImportStatus('error');
             setImportMessage(errorCode === 'IMAGE_QUALITY' ? t('declare.import_image_quality') : (message || t('declare.import_error_generic')));
           }
         } catch (_) {}
-      }, 3000);
+      }, 1500);
+
+      // Polling de secours : vérifie toutes les 8s si une nouvelle déclaration est apparue
+      importFallbackPollRef.current = setInterval(async () => {
+        if (!importPollRef.current) { clearInterval(importFallbackPollRef.current); importFallbackPollRef.current = null; return; }
+        try {
+          const res = await apiClient.get(`/api/prierejanaza/utilisateur/${user.dbId}`);
+          const maxId = res.data?.length > 0 ? Math.max(...res.data.map(d => d.id)) : 0;
+          if (maxId > importDeclMaxIdRef.current) applyImportSuccess(false);
+        } catch (_) {}
+      }, 8000);
 
       setTimeout(() => {
         if (importPollRef.current) {
           clearInterval(importPollRef.current);
           importPollRef.current = null;
+          if (importFallbackPollRef.current) { clearInterval(importFallbackPollRef.current); importFallbackPollRef.current = null; }
           setImportLoading(false);
           setImportStatus('error');
           setImportMessage(t('declare.import_timeout'));
