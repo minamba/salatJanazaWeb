@@ -2120,12 +2120,17 @@ img { max-width: 100%; }
 
 .mpp-prayer-row {
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
+  flex-direction: column;
+  gap: 0.3rem;
   padding: 0.55rem 1rem;
   border-bottom: 1px solid #f4f0e8;
 }
 .mpp-prayer-row:last-child { border-bottom: none; }
+.mpp-prayer-body {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
 .mpp-actions {
   display: flex;
   gap: 0.3rem;
@@ -2155,7 +2160,6 @@ img { max-width: 100%; }
   font-weight: 700;
   color: var(--green-dark);
   font-variant-numeric: tabular-nums;
-  min-width: 34px;
 }
 .mpp-avatar {
   width: 34px;
@@ -2197,8 +2201,18 @@ img { max-width: 100%; }
   font-size: 0.72rem;
   color: var(--text-muted);
 }
+.mpp-commentaire {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--cream-light, #f9f6f0);
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  line-height: 1.4;
+}
 .mpp-statut {
-  flex-shrink: 0;
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -2208,13 +2222,13 @@ img { max-width: 100%; }
 }
 .mpp-statut-avenir   { background: #e6f4ea; color: #2d7a45; }
 .mpp-statut-encours  { background: #fff0e0; color: #c4610d; }
-.mpp-statut-terminee { background: #f0f0f0; color: #7a7a7a; }
+.mpp-statut-terminee { background: #fdecea; color: #c62828; }
 
 /* ── Prières full page ──────────────────────────────────── */
 .prieres-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 64px);
+  height: calc(100vh - 64px);
 }
 
 /* Header */
@@ -2394,14 +2408,16 @@ img { max-width: 100%; }
 
 /* Map full page */
 .prieres-page-map {
-  flex: 1;
+  height: calc(100vh - 185px); /* 113px sticky-header + ~72px controls bar */
+  min-height: 300px;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem 2rem 1.5rem;
+  padding: 0.75rem 1rem 0;
 }
 .prieres-page-map .priere-map-wrap {
-  height: calc(100vh - 280px);
-  min-height: 480px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   border-radius: 14px;
   border: 1px solid var(--green-border);
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
@@ -2410,11 +2426,14 @@ img { max-width: 100%; }
 
 @media (max-width: 700px) {
   .prieres-page-map {
-    padding: 0.75rem 0.75rem 1rem;
+    height: calc(100vh - 130px); /* 66px sticky navbar + ~56px controls bar */
+    min-height: 250px;
+    padding: 0.5rem 0.5rem 0;
   }
   .prieres-page-map .priere-map-wrap {
-    height: calc(100vh - 220px);
-    min-height: 380px;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
     border-radius: 10px;
   }
   .prieres-controls-inner {

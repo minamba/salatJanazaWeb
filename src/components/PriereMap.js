@@ -17,6 +17,24 @@ const GENRE_IMG = { homme: hommeImg, femme: femmeImg, enfant: enfantImg };
 const STATUT_LABEL = { AVenir: 'À venir', EnCours: 'En cours', Terminee: 'Terminée' };
 const STATUT_CLS   = { AVenir: 'avenir',  EnCours: 'encours',  Terminee: 'terminee' };
 
+function computeStatut(p) {
+  const dateHeure = p.dateHeurePriere instanceof Date ? p.dateHeurePriere : new Date(p.dateHeurePriere);
+  const offset = p.utcOffsetMinutes || (-new Date().getTimezoneOffset());
+  const trueUtcMs = dateHeure.getTime() - offset * 60_000;
+  const now = Date.now();
+  if (trueUtcMs > now) return 'AVenir';
+  if (trueUtcMs > now - 90 * 60 * 1000) return 'EnCours';
+  return 'Terminee';
+}
+
+function useMinuteTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
+
 // Bounding boxes for common countries (fallback if Nominatim bounds are bad)
 const COUNTRY_BOUNDS = {
   fr: [[41.3, -5.5],  [51.2, 9.7]],
@@ -238,6 +256,7 @@ function ShareModal({ priere, onClose }) {
 // ─── Popup ────────────────────────────────────────────────────────────────────
 function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole, onDelete }) {
   const [shareItem, setShareItem] = useState(null);
+  useMinuteTick();
   const first = items[0];
   const distKm = userPos ? haversineKm(userPos[0], userPos[1], lat, lng) : null;
   const byDate = {};
@@ -280,34 +299,43 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                 || currentUserRole === 'admin' || currentUserRole === 'superadmin';
               return (
                 <div key={p.id} className="mpp-prayer-row">
-                  <div className="mpp-time">{fmtTime(p.dateHeurePriere)}</div>
-                  <div className="mpp-avatar">
-                    {genreImg
-                      ? <img src={genreImg} alt={genreLabel} />
-                      : <div className="mpp-avatar-placeholder">?</div>}
-                  </div>
-                  <div className="mpp-info">
-                    <span className="mpp-nom">{p.estAnonyme ? 'Anonyme' : (formatNomDefunt(p.nomDefunt) || 'Inconnu(e)')}</span>
-                    {genreLabel && <span className="mpp-genre">{genreLabel}</span>}
-                  </div>
-                  <span className={`mpp-statut mpp-statut-${STATUT_CLS[p.statut] ?? ''}`}>
-                    {STATUT_LABEL[p.statut] ?? p.statut}
+                  <span className={`mpp-statut mpp-statut-${STATUT_CLS[computeStatut(p)] ?? ''}`}>
+                    {STATUT_LABEL[computeStatut(p)] ?? p.statut}
                   </span>
-                  <div className="mpp-actions">
-                    <button className="mpp-btn-share" title="Générer l'annonce" onClick={() => setShareItem(p)}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                    </button>
-                    {canDelete && (
-                      <button className="mpp-btn-delete" title="Supprimer" onClick={() => onDelete?.(p.id)}>
+                  <div className="mpp-prayer-body">
+                    <div className="mpp-time">{fmtTime(p.dateHeurePriere)}</div>
+                    <div className="mpp-avatar">
+                      {genreImg
+                        ? <img src={genreImg} alt={genreLabel} />
+                        : <div className="mpp-avatar-placeholder">?</div>}
+                    </div>
+                    <div className="mpp-info">
+                      <span className="mpp-nom">{p.estAnonyme ? 'Anonyme' : (formatNomDefunt(p.nomDefunt) || 'Inconnu(e)')}</span>
+                    </div>
+                    <div className="mpp-actions">
+                      <button className="mpp-btn-share" title="Générer l'annonce" onClick={() => setShareItem(p)}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                          <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
                       </button>
-                    )}
+                      {canDelete && (
+                        <button className="mpp-btn-delete" title="Supprimer" onClick={() => onDelete?.(p.id)}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  {p.commentaire && (
+                    <div className="mpp-commentaire">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0, marginTop:2}}>
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                      </svg>
+                      <span>{p.commentaire}</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -451,7 +479,7 @@ export default function PriereMap({ prieres, mode, externalUserPos, currentUserI
             position={[g.lat, g.lng]}
             icon={createMosqueeIcon(g.items.length, zoom)}
           >
-            <Popup minWidth={290} maxWidth={330} autoPan={false} closeButton={false}>
+            <Popup minWidth={290} maxWidth={330} autoPan={true} autoPanPadding={[20, 20]} closeButton={false}>
               <MosqueePopup items={g.items} userPos={userPos} lat={g.lat} lng={g.lng} currentUserId={currentUserId} currentUserRole={currentUserRole} onDelete={handleDelete} />
             </Popup>
           </HoverMarker>
