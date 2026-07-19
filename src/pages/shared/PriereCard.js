@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
 import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../../lib/utils';
+import { computeStatut, useMinuteTick } from '../../lib/statut';
+import { useCountryFlag } from '../../lib/countryFlag';
 import hommeImg from '../../assets/homme.png';
 import femmeImg from '../../assets/femme.png';
 import enfantImg from '../../assets/enfant.png';
@@ -20,7 +22,7 @@ const GENRE_IMG = {
   enfant: enfantImg, child: enfantImg,
 };
 
-const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA' };
+const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -186,6 +188,7 @@ function AvisDecesModal({ priere, onClose }) {
 }
 
 export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
+  useMinuteTick();
   const { t, i18n } = useTranslation();
   const locale = LOCALE_MAP[i18n.language] ?? 'fr-FR';
   const [showShare, setShowShare] = useState(false);
@@ -197,7 +200,8 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
     ? new Date(priere.dateCreation).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
-  const statutCls = STATUT_CLS[priere.statut] ?? '';
+  const isoCode = useCountryFlag(priere.mosqueeLatitude, priere.mosqueeLongitude, priere.mosqueeAdresse);
+  const statutCls = STATUT_CLS[computeStatut(priere)] ?? '';
   const statutLabel = statutCls ? t(`card.statut.${statutCls}`) : (priere.statut ?? '');
 
   const genreKey = priere.genre ? priere.genre.toLowerCase().trim() : null;
@@ -216,6 +220,16 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
     <div className={`priere-card pc-statut-${statutCls}`}>
       <div className="pc-top">
         <span className={`pc-badge pc-badge-${statutCls}`}>{statutLabel}</span>
+        {isoCode && (
+          <img
+            className="pc-country-flag"
+            src={`https://flagcdn.com/w40/${isoCode.toLowerCase()}.png`}
+            srcSet={`https://flagcdn.com/w80/${isoCode.toLowerCase()}.png 2x`}
+            alt={isoCode}
+            width="20"
+            height="15"
+          />
+        )}
         {genreLabel && (
           <span className="pc-genre">
             {genreImg && <img src={genreImg} alt={genreLabel} className="pc-genre-img" />}

@@ -1,4 +1,4 @@
-{
+﻿{
   "nav": {
     "prayers": "Prayers",
     "contact": "Contact",
@@ -117,7 +117,10 @@
     "at": "at",
     "declared_on": "Declared on",
     "route_title": "Get directions",
-    "delete_title": "Delete this prayer"
+    "delete_title": "Delete this prayer",
+    "new_janaza": "New janaza prayer",
+    "civility_male": "Mr.",
+    "civility_female": "Mrs."
   },
   "login": {
     "title": "Log in",
@@ -221,7 +224,9 @@
     "unknown": "(Unknown)",
     "prayer_label": "PRAYER",
     "dua": "May Allah grant him His mercy, forgive his sins and welcome him into His paradise. Ameen.",
-    "dua_f": "May Allah grant her His mercy, forgive her sins and welcome her into His paradise. Ameen."
+    "dua_f": "May Allah grant her His mercy, forgive her sins and welcome her into His paradise. Ameen.",
+    "family_announce": "The <bold>{{name}}</bold> family sorrowfully announces the passing of:",
+    "burial_in": "Burial in <bold>{{location}}</bold>"
   },
   "mosquee": {
     "add_autocomplete_hint": "It is not necessary to select a suggestion from the autocomplete. You can type the address manually."
@@ -312,5 +317,12 @@
     "preview_download": "⬇ Download as PNG",
     "preview_generating": "Generating…",
     "clear": "Clear"
+  },
+  "banner": {
+    "live": "Live",
+    "none": "No funeral prayer scheduled",
+    "en_cours": "salat janaza in progress",
+    "a_venir_one": "scheduled prayer coming up",
+    "a_venir_other": "scheduled prayers coming up"
   }
 }

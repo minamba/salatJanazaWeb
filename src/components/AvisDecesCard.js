@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import mosqueeImg    from '../assets/icon3.png';
 import invocationImg from '../assets/invocation.png';
 import { capitalizeFirst, parseNomDefunt } from '../lib/utils';
@@ -30,23 +30,24 @@ function prepPays(pays) {
   return 'en';
 }
 
+const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
+
 function fmtDate(d, lang) {
-  const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = LOCALE_MAP[lang] ?? 'fr-FR';
   return new Date(d).toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 }
 
 function fmtHeure(d, lang) {
-  const locale = lang === 'ar' ? 'ar-DZ' : lang === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = LOCALE_MAP[lang] ?? 'fr-FR';
   return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 
 const AvisDecesCard = forwardRef(({ data }, ref) => {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language?.startsWith('ar') ? 'ar' : i18n.language?.startsWith('en') ? 'en' : 'fr';
+  const lang = i18n.language?.split('-')[0] ?? 'fr';
   const isAr = lang === 'ar';
-  const isEn = lang === 'en';
 
   const {
     genre, nomDefunt, estAnonyme, nomFamille,
@@ -69,44 +70,21 @@ const AvisDecesCard = forwardRef(({ data }, ref) => {
     else nomDisplay = t('avis.community_brother');
     sousNom = t('avis.unknown');
   } else {
-    let civilite;
-    if (isAr) {
-      civilite = '';
-    } else if (isEn) {
-      civilite = isF ? 'Mrs.' : g === 'homme' ? 'Mr.' : '';
-    } else {
-      civilite = isF ? 'Mme.' : g === 'homme' ? 'M.' : '';
-    }
+    const civilite = isAr ? '' : (isF ? t('card.civility_female') : g === 'homme' ? t('card.civility_male') : '');
     const nom = parseNomDefunt(nomDefunt ?? '').display;
     nomDisplay = civilite ? `${civilite} ${nom.toUpperCase()}` : nom.toUpperCase();
     sousNom = null;
   }
 
   // ── Family announce sentence ──────────────────────────────────────────────────
-  let familyAnnounce;
-  if (nomFamille) {
-    if (isAr) {
-      familyAnnounce = <>تُعلن عائلة <strong>{nomFamille.toUpperCase()}</strong> بحزن عن وفاة :</>;
-    } else if (isEn) {
-      familyAnnounce = <>The <strong>{nomFamille.toUpperCase()}</strong> family sorrowfully announces the passing of:</>;
-    } else {
-      familyAnnounce = <>La famille <strong>{nomFamille.toUpperCase()}</strong> est triste de vous annoncer le décès de :</>;
-    }
-  } else {
-    familyAnnounce = <>{t('avis.community_announce')}</>;
-  }
+  const familyAnnounce = nomFamille
+    ? <Trans i18nKey="avis.family_announce" values={{ name: nomFamille.toUpperCase() }} components={{ bold: <strong /> }} />
+    : <>{t('avis.community_announce')}</>;
 
   // ── Burial text ───────────────────────────────────────────────────────────────
-  let burialNode;
-  if (burialStr) {
-    if (isAr) {
-      burialNode = <span>الدفن في <strong>{burialStr}</strong></span>;
-    } else if (isEn) {
-      burialNode = <span>Burial in <strong>{burialStr}</strong></span>;
-    } else {
-      burialNode = <span>Enterrement {prepPays(paysEnterrement)} <strong>{burialStr}</strong></span>;
-    }
-  }
+  const burialNode = burialStr
+    ? <Trans i18nKey="avis.burial_in" values={{ prep: prepPays(paysEnterrement), location: burialStr }} components={{ bold: <strong /> }} />
+    : null;
 
   // ── Dua ───────────────────────────────────────────────────────────────────────
   const duaText = isAr

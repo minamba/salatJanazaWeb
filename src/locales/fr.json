@@ -1,4 +1,4 @@
-{
+﻿{
   "nav": {
     "prayers": "Prières",
     "contact": "Contact",
@@ -117,7 +117,10 @@
     "at": "à",
     "declared_on": "Déclaré le",
     "route_title": "Calculer l'itinéraire",
-    "delete_title": "Supprimer cette prière"
+    "delete_title": "Supprimer cette prière",
+    "new_janaza": "Nouvelle prière janaza",
+    "civility_male": "M.",
+    "civility_female": "Mme"
   },
   "login": {
     "title": "Connexion",
@@ -221,7 +224,9 @@
     "unknown": "(Inconnu(e))",
     "prayer_label": "PRIÈRE",
     "dua": "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn.",
-    "dua_f": "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn."
+    "dua_f": "Qu'Allah lui accorde Sa miséricorde, lui pardonne ses péchés et l'accueille dans Son paradis. Amîn.",
+    "family_announce": "La famille <bold>{{name}}</bold> est triste de vous annoncer le décès de :",
+    "burial_in": "Enterrement {{prep}} <bold>{{location}}</bold>"
   },
   "mosquee": {
     "add_autocomplete_hint": "Il n'est pas obligatoire de sélectionner une suggestion de l'autocomplétion. Vous pouvez saisir l'adresse manuellement."
@@ -312,5 +317,12 @@
     "preview_download": "⬇ Télécharger en PNG",
     "preview_generating": "Génération…",
     "clear": "Effacer"
+  },
+  "banner": {
+    "live": "En direct",
+    "none": "Aucune prière funéraire prévue",
+    "en_cours": "salat janaza en cours",
+    "a_venir_one": "prière programmée à venir",
+    "a_venir_other": "prières programmées à venir"
   }
 }

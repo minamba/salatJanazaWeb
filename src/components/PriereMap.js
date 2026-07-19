@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import html2canvas from 'html2canvas';
 import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../lib/utils';
+import { computeStatut, useMinuteTick } from '../lib/statut';
 import { deletePriere } from '../lib/actions/priereJanazaActions';
 import AvisDecesCard from './AvisDecesCard';
 import 'leaflet/dist/leaflet.css';
@@ -17,23 +19,6 @@ const GENRE_IMG = { homme: hommeImg, femme: femmeImg, enfant: enfantImg };
 const STATUT_LABEL = { AVenir: 'À venir', EnCours: 'En cours', Terminee: 'Terminée' };
 const STATUT_CLS   = { AVenir: 'avenir',  EnCours: 'encours',  Terminee: 'terminee' };
 
-function computeStatut(p) {
-  const dateHeure = p.dateHeurePriere instanceof Date ? p.dateHeurePriere : new Date(p.dateHeurePriere);
-  const offset = p.utcOffsetMinutes || (-new Date().getTimezoneOffset());
-  const trueUtcMs = dateHeure.getTime() - offset * 60_000;
-  const now = Date.now();
-  if (trueUtcMs > now) return 'AVenir';
-  if (trueUtcMs > now - 90 * 60 * 1000) return 'EnCours';
-  return 'Terminee';
-}
-
-function useMinuteTick() {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000);
-    return () => clearInterval(id);
-  }, []);
-}
 
 // Bounding boxes for common countries (fallback if Nominatim bounds are bad)
 const COUNTRY_BOUNDS = {
@@ -254,7 +239,10 @@ function ShareModal({ priere, onClose }) {
 }
 
 // ─── Popup ────────────────────────────────────────────────────────────────────
+const STATUT_I18N = { AVenir: 'avenir', EnCours: 'encours', Terminee: 'terminee' };
+
 function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole, onDelete }) {
+  const { t } = useTranslation();
   const [shareItem, setShareItem] = useState(null);
   useMinuteTick();
   const first = items[0];
@@ -289,7 +277,7 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                 <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              <span>{dateLabel} · <strong>{prayers.length} prière{prayers.length > 1 ? 's' : ''}</strong></span>
+              <span>{dateLabel} · <strong>{t('prieres.count', { count: prayers.length })}</strong></span>
             </div>
             {prayers.map((p) => {
               const genreKey = (p.genre ?? '').toLowerCase().trim();
@@ -300,7 +288,7 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
               return (
                 <div key={p.id} className="mpp-prayer-row">
                   <span className={`mpp-statut mpp-statut-${STATUT_CLS[computeStatut(p)] ?? ''}`}>
-                    {STATUT_LABEL[computeStatut(p)] ?? p.statut}
+                    {t('card.statut.' + (STATUT_I18N[computeStatut(p)] ?? ''), { defaultValue: p.statut })}
                   </span>
                   <div className="mpp-prayer-body">
                     <div className="mpp-time">{fmtTime(p.dateHeurePriere)}</div>
@@ -310,10 +298,10 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                         : <div className="mpp-avatar-placeholder">?</div>}
                     </div>
                     <div className="mpp-info">
-                      <span className="mpp-nom">{p.estAnonyme ? 'Anonyme' : (formatNomDefunt(p.nomDefunt) || 'Inconnu(e)')}</span>
+                      <span className="mpp-nom">{p.estAnonyme ? t('declare.defunt_anonymous') : (formatNomDefunt(p.nomDefunt) || t('card.unknown'))}</span>
                     </div>
                     <div className="mpp-actions">
-                      <button className="mpp-btn-share" title="Générer l'annonce" onClick={() => setShareItem(p)}>
+                      <button className="mpp-btn-share" title={t('declare.btn_preview')} onClick={() => setShareItem(p)}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
@@ -352,7 +340,7 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="3 11 22 2 13 21 11 13 3 11"/>
             </svg>
-            Voir l'itinéraire
+            {t('card.route_title')}
           </a>
       </div>
     </div>
@@ -410,9 +398,10 @@ function HoverMarker({ position, icon, children }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PriereMap({ prieres, mode, externalUserPos, currentUserId, currentUserRole }) {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
 
   function handleDelete(id) {
-    if (window.confirm('Supprimer cette prière ?')) dispatch(deletePriere(id));
+    if (window.confirm(t('card.delete_title') + ' ?')) dispatch(deletePriere(id));
   }
   const [userPos, setUserPos]             = useState(null);
   const [countryBounds, setCountryBounds] = useState(null);

@@ -11,6 +11,28 @@ import {
   FETCH_PRIERES_PENDING_REQUEST, FETCH_PRIERES_PENDING_SUCCESS, FETCH_PRIERES_PENDING_FAILURE,
 } from '../actions/priereJanazaActions';
 
+// ── Seen prayer IDs ────────────────────────────────────────────────────────────
+// Persisted in localStorage so that a prayer already known before a refresh is
+// never shown again as "new" — the server is the source of truth for expiry.
+const LS_SEEN_KEY = 'qabr_seen_prayer_ids';
+
+function loadSeenIds() {
+  try {
+    const raw = localStorage.getItem(LS_SEEN_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+function markSeen(ids, seenSet) {
+  ids.forEach(id => seenSet.add(id));
+  try {
+    const arr = [...seenSet];
+    localStorage.setItem(LS_SEEN_KEY, JSON.stringify(arr.slice(-1000)));
+  } catch {}
+}
+
+const _seenPrayerIds = loadSeenIds();
+
 function* fetchPrieresSaga() {
   try {
     const res = yield call(priereApi.getPrieres);
@@ -23,6 +45,7 @@ function* fetchPrieresSaga() {
 function* fetchPrieresUpcomingSaga() {
   try {
     const res = yield call(priereApi.getPrieresUpcoming);
+    markSeen(res.data.map(p => p.id), _seenPrayerIds);
     yield put({ type: FETCH_PRIERES_SUCCESS, payload: res.data });
   } catch {
     yield put({ type: FETCH_PRIERES_FAILURE, payload: 'Erreur chargement des prières.' });
@@ -41,6 +64,7 @@ function* fetchPrieresByUserSaga(action) {
 function* createPriereSaga(action) {
   try {
     const res = yield call(priereApi.createPriere, action.payload);
+    markSeen([res.data.id], _seenPrayerIds);
     yield put({ type: CREATE_PRIERE_SUCCESS, payload: res.data });
   } catch (err) {
     yield put({ type: CREATE_PRIERE_FAILURE, payload: err.response?.data?.message ?? 'Erreur lors de la déclaration.' });
@@ -87,7 +111,10 @@ function* pollPrieresSaga() {
 
       const res = yield call(priereApi.getPrieresUpcoming);
       const freshList = res.data;
-      const newPrieres = hasData ? freshList.filter((p) => !knownIds.has(p.id)) : [];
+      const newPrieres = hasData
+        ? freshList.filter((p) => !knownIds.has(p.id) && !_seenPrayerIds.has(p.id))
+        : [];
+      markSeen(freshList.map(p => p.id), _seenPrayerIds);
 
       yield put({ type: POLL_PRIERES_SUCCESS, payload: { list: freshList, newPrieres } });
     } catch {

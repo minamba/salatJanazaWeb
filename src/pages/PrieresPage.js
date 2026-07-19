@@ -7,10 +7,11 @@ import { fetchMosquees } from '../lib/actions/mosqueeActions';
 import { getUtilisateurByIdentityId } from '../lib/api/utilisateurApi';
 import PriereCard from './shared/PriereCard';
 import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
+import { useCountryFlag } from '../lib/countryFlag';
 
 const PriereMap = lazy(() => import('../components/PriereMap'));
 
-const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA' };
+const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -75,6 +76,14 @@ const GENRES = [
   { value: 'Enfant', key: 'enfant' },
 ];
 
+function CountryResolver({ prayerId, lat, lon, adresse, onResolve }) {
+  const iso = useCountryFlag(lat, lon, adresse);
+  useEffect(() => {
+    if (iso) onResolve(prayerId, iso);
+  }, [iso, prayerId]); // onResolve excluded: stable callback via useCallback
+  return null;
+}
+
 export default function PrieresPage() {
   const dispatch = useDispatch();
   const { t, i18n } = useTranslation();
@@ -127,7 +136,18 @@ export default function PrieresPage() {
   const [filterGenre,   setFilterGenre]   = useState('');
   const [filterMosquee, setFilterMosquee] = useState('');
   const [filterDate,    setFilterDate]    = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
   const [sortProximity, setSortProximity] = useState(false);
+  const [countryMap, setCountryMap] = useState(() => new Map());
+
+  const handleCountryResolve = useCallback((prayerId, iso) => {
+    setCountryMap(prev => {
+      if (prev.get(prayerId) === iso) return prev;
+      const next = new Map(prev);
+      next.set(prayerId, iso);
+      return next;
+    });
+  }, []);
 
   useEffect(() => { dispatch(fetchPrieresUpcoming()); dispatch(fetchMosquees()); }, [dispatch]);
 
@@ -152,12 +172,26 @@ export default function PrieresPage() {
       .sort((a, b) => a.value.localeCompare(b.value));
   }, [list, locale]);
 
+  const uniqueCountries = useMemo(() => {
+    const isos = new Set(countryMap.values());
+    if (isos.size < 2) return [];
+    try {
+      const display = new Intl.DisplayNames([i18n.language ?? 'fr'], { type: 'region' });
+      return [...isos]
+        .map(iso => ({ iso, label: display.of(iso) ?? iso }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    } catch {
+      return [...isos].map(iso => ({ iso, label: iso })).sort((a, b) => a.iso.localeCompare(b.iso));
+    }
+  }, [countryMap, i18n.language]);
+
   const filteredList = useMemo(() => {
     let result = [...list];
     if (filterNom) result = result.filter((p) => normalize(p.nomDefunt).includes(normalize(filterNom)));
     if (filterGenre) result = result.filter((p) => normalize(p.genre) === normalize(filterGenre));
     if (filterMosquee) result = result.filter((p) => p.mosqueeNom === filterMosquee);
     if (filterDate) result = result.filter((p) => new Date(p.dateHeurePriere).toISOString().slice(0, 10) === filterDate);
+    if (filterCountry) result = result.filter((p) => countryMap.get(p.id) === filterCountry);
     if (sortProximity && userPos) {
       result.sort((a, b) => {
         const da = a.mosqueeLatitude && a.mosqueeLongitude
@@ -168,12 +202,13 @@ export default function PrieresPage() {
       });
     }
     return result;
-  }, [list, filterNom, filterGenre, filterMosquee, filterDate, sortProximity, userPos]);
+  }, [list, filterNom, filterGenre, filterMosquee, filterDate, filterCountry, sortProximity, userPos, countryMap]);
 
-  const hasFilter = filterNom || filterGenre || filterMosquee || filterDate || sortProximity;
+  const hasFilter = filterNom || filterGenre || filterMosquee || filterDate || filterCountry || sortProximity;
 
   const clearFilters = () => {
-    setFilterNom(''); setFilterGenre(''); setFilterMosquee(''); setFilterDate(''); setSortProximity(false);
+    setFilterNom(''); setFilterGenre(''); setFilterMosquee(''); setFilterDate('');
+    setFilterCountry(''); setSortProximity(false);
   };
 
   const handleProximity = () => { requestGeo(); setSortProximity((v) => !v); };
@@ -210,23 +245,50 @@ export default function PrieresPage() {
 
       <div className="prieres-controls-bar" ref={controlsRef}>
         <div className="container prieres-controls-inner">
-          <div className="view-toggle">
-            <button
-              className={`view-toggle-btn${view === 'map' ? ' active' : ''}`}
-              onClick={() => switchView('map')}
-            >
-              <IconMap /> {t('prieres.map')}
-            </button>
-            <button
-              className={`view-toggle-btn${view === 'tile' ? ' active' : ''}`}
-              onClick={() => switchView('tile')}
-            >
-              <IconGrid /> {t('prieres.tiles')}
-            </button>
+          {/* Ligne 1 : toggle vue (+ onglets carte) */}
+          <div className="prieres-controls-row">
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn${view === 'map' ? ' active' : ''}`}
+                onClick={() => switchView('map')}
+              >
+                <IconMap /> {t('prieres.map')}
+              </button>
+              <button
+                className={`view-toggle-btn${view === 'tile' ? ' active' : ''}`}
+                onClick={() => switchView('tile')}
+              >
+                <IconGrid /> {t('prieres.tiles')}
+              </button>
+            </div>
+
+            {view === 'map' && (
+              <div className="map-mode-tabs" style={{ marginBottom: 0 }}>
+                <button
+                  className={`map-mode-btn${mapMode === 'proximity' ? ' active' : ''}`}
+                  onClick={() => { requestGeo(); setMapMode('proximity'); }}
+                >
+                  <IconPin /> {t('prieres.proximity')}
+                </button>
+                <button
+                  className={`map-mode-btn${mapMode === 'country' ? ' active' : ''}`}
+                  onClick={() => setMapMode('country')}
+                >
+                  <IconGlobe /> {t('prieres.country')}
+                </button>
+                <button
+                  className={`map-mode-btn${mapMode === 'all' ? ' active' : ''}`}
+                  onClick={() => setMapMode('all')}
+                >
+                  <IconAll /> {t('prieres.all_prayers')}
+                </button>
+              </div>
+            )}
           </div>
 
+          {/* Ligne 2 : tous les filtres (mode tuiles uniquement) */}
           {view === 'tile' && list.length > 0 && (
-            <div className="prieres-controls-filters">
+            <div className="prieres-controls-row prieres-controls-filters">
               <div className="tile-filter-search">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -253,7 +315,6 @@ export default function PrieresPage() {
                   </button>
                 ))}
               </div>
-
               <select
                 className="tile-filter-select"
                 value={filterMosquee}
@@ -264,7 +325,6 @@ export default function PrieresPage() {
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
-
               <select
                 className="tile-filter-select"
                 value={filterDate}
@@ -275,7 +335,18 @@ export default function PrieresPage() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
-
+              {uniqueCountries.length > 0 && (
+                <select
+                  className="tile-filter-select"
+                  value={filterCountry}
+                  onChange={(e) => setFilterCountry(e.target.value)}
+                >
+                  <option value="">Tous les pays</option>
+                  {uniqueCountries.map(({ iso, label }) => (
+                    <option key={iso} value={iso}>{label}</option>
+                  ))}
+                </select>
+              )}
               <button
                 className={`filter-pill filter-pill-geo${sortProximity ? ' active' : ''}`}
                 onClick={handleProximity}
@@ -283,7 +354,6 @@ export default function PrieresPage() {
               >
                 <IconPin /> {t('prieres.proximity')}
               </button>
-
               {hasFilter && (
                 <button className="filter-clear" onClick={clearFilters}>
                   {t('prieres.reset')}
@@ -291,31 +361,20 @@ export default function PrieresPage() {
               )}
             </div>
           )}
-
-          {view === 'map' && (
-            <div className="map-mode-tabs" style={{ marginBottom: 0 }}>
-              <button
-                className={`map-mode-btn${mapMode === 'proximity' ? ' active' : ''}`}
-                onClick={() => { requestGeo(); setMapMode('proximity'); }}
-              >
-                <IconPin /> {t('prieres.proximity')}
-              </button>
-              <button
-                className={`map-mode-btn${mapMode === 'country' ? ' active' : ''}`}
-                onClick={() => setMapMode('country')}
-              >
-                <IconGlobe /> {t('prieres.country')}
-              </button>
-              <button
-                className={`map-mode-btn${mapMode === 'all' ? ' active' : ''}`}
-                onClick={() => setMapMode('all')}
-              >
-                <IconAll /> {t('prieres.all_prayers')}
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Invisible resolvers — populate countryMap as cards render */}
+      {list.map(p => (
+        <CountryResolver
+          key={p.id}
+          prayerId={p.id}
+          lat={p.mosqueeLatitude}
+          lon={p.mosqueeLongitude}
+          adresse={p.mosqueeAdresse}
+          onResolve={handleCountryResolve}
+        />
+      ))}
 
       {view === 'map' ? (
         <div className="prieres-page-map">

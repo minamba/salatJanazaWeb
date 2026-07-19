@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +10,20 @@ const LANGS = [
   { code: 'fr', fi: 'fr' },
   { code: 'en', fi: 'gb' },
   { code: 'ar', fi: 'sa' },
+  { code: 'tr', fi: 'tr' },
+  { code: 'ja', fi: 'jp' },
+  { code: 'ko', fi: 'kr' },
+  { code: 'ms', fi: 'my' },
+  { code: 'ur', fi: 'pk' },
+  { code: 'id', fi: 'id' },
+  { code: 'bn', fi: 'bd' },
+  { code: 'ru', fi: 'ru' },
+  { code: 'pt', fi: 'br' },
+  { code: 'de', fi: 'de' },
+  { code: 'it', fi: 'it' },
+  { code: 'es', fi: 'es' },
 ];
+const RTL_LANGS = new Set(['ar', 'ur']);
 
 export default function Navbar() {
   const dispatch = useDispatch();
@@ -26,7 +39,7 @@ export default function Navbar() {
   const changeLang = (code) => {
     i18n.changeLanguage(code);
     localStorage.setItem('lang', code);
-    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = RTL_LANGS.has(code) ? 'rtl' : 'ltr';
     document.documentElement.lang = code;
     setLangOpen(false);
   };

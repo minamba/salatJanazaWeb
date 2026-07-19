@@ -56,11 +56,11 @@ export const PAYS_TZ = {
 /**
  * Computes the UTC offset in minutes for a given country name (French) and prayer date.
  * Uses the Intl API for DST-aware computation.
- * Falls back to `fallbackMinutes` (original DB value or longitude approximation) if
- * the country is unknown or the Intl API throws.
+ * Falls back to `fallbackMinutes` if the country is unknown or the Intl API throws.
+ * Pass `-new Date().getTimezoneOffset()` for a device-timezone fallback.
  *
  * @param {string|null} pays - French country name from the PAYS list
- * @param {number} fallbackMinutes - offset to use if country lookup fails
+ * @param {number} fallbackMinutes - integer UTC offset in minutes to use if country lookup fails
  * @param {Date} refDate - reference date for DST resolution (defaults to now)
  * @returns {number} UTC offset in minutes (e.g. 120 for UTC+2)
  */

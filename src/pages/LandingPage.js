@@ -7,6 +7,7 @@ import { fetchMosquees } from '../lib/actions/mosqueeActions';
 import { getUtilisateurByIdentityId } from '../lib/api/utilisateurApi';
 import PriereCard from './shared/PriereCard';
 import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
+import { useCountryFlag } from '../lib/countryFlag';
 import motifBg from '../assets/motif-islamique.png';
 import iphoImg from '../assets/notif.png';
 import screen1 from '../assets/test1.png';
@@ -16,7 +17,15 @@ import sec2Img from '../assets/sec2.png';
 
 const PriereMap = lazy(() => import('../components/PriereMap'));
 
-const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA' };
+const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
+
+function CountryResolver({ prayerId, lat, lon, adresse, onResolve }) {
+  const iso = useCountryFlag(lat, lon, adresse);
+  useEffect(() => {
+    if (iso) onResolve(prayerId, iso);
+  }, [iso, prayerId]);
+  return null;
+}
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -52,7 +61,18 @@ export default function LandingPage() {
   const [filterGenre,   setFilterGenre]   = useState('');
   const [filterMosquee, setFilterMosquee] = useState('');
   const [filterDate,    setFilterDate]    = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
   const [sortProximity, setSortProximity] = useState(false);
+  const [countryMap, setCountryMap] = useState(() => new Map());
+
+  const handleCountryResolve = useCallback((prayerId, iso) => {
+    setCountryMap(prev => {
+      if (prev.get(prayerId) === iso) return prev;
+      const next = new Map(prev);
+      next.set(prayerId, iso);
+      return next;
+    });
+  }, []);
 
   useEffect(() => { dispatch(fetchPrieresUpcoming()); dispatch(fetchMosquees()); }, [dispatch]);
 
@@ -98,12 +118,26 @@ export default function LandingPage() {
       .sort((a, b) => a.value.localeCompare(b.value));
   }, [prieres, locale]);
 
+  const uniqueCountries = useMemo(() => {
+    const isos = new Set(countryMap.values());
+    if (isos.size < 2) return [];
+    try {
+      const display = new Intl.DisplayNames([i18n.language ?? 'fr'], { type: 'region' });
+      return [...isos]
+        .map(iso => ({ iso, label: display.of(iso) ?? iso }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    } catch {
+      return [...isos].map(iso => ({ iso, label: iso })).sort((a, b) => a.iso.localeCompare(b.iso));
+    }
+  }, [countryMap, i18n.language]);
+
   const filteredPrieres = useMemo(() => {
     let list = [...prieres];
     if (filterNom) list = list.filter((p) => normalize(p.nomDefunt).includes(normalize(filterNom)));
     if (filterGenre) list = list.filter((p) => normalize(p.genre) === normalize(filterGenre));
     if (filterMosquee) list = list.filter((p) => p.mosqueeNom === filterMosquee);
     if (filterDate) list = list.filter((p) => new Date(p.dateHeurePriere).toISOString().slice(0, 10) === filterDate);
+    if (filterCountry) list = list.filter((p) => countryMap.get(p.id) === filterCountry);
     if (sortProximity && userPos) {
       list.sort((a, b) => {
         const da = a.mosqueeLatitude && a.mosqueeLongitude
@@ -114,12 +148,13 @@ export default function LandingPage() {
       });
     }
     return list;
-  }, [prieres, filterNom, filterGenre, filterMosquee, filterDate, sortProximity, userPos]);
+  }, [prieres, filterNom, filterGenre, filterMosquee, filterDate, filterCountry, sortProximity, userPos, countryMap]);
 
-  const hasActiveFilter = filterNom || filterGenre || filterMosquee || filterDate || sortProximity;
+  const hasActiveFilter = filterNom || filterGenre || filterMosquee || filterDate || filterCountry || sortProximity;
 
   const clearFilters = () => {
-    setFilterNom(''); setFilterGenre(''); setFilterMosquee(''); setFilterDate(''); setSortProximity(false);
+    setFilterNom(''); setFilterGenre(''); setFilterMosquee(''); setFilterDate('');
+    setFilterCountry(''); setSortProximity(false);
   };
 
   const handleProximity = () => { requestGeo(); setSortProximity((v) => !v); };
@@ -255,6 +290,18 @@ export default function LandingPage() {
       </section>
       </div>
 
+      {/* Invisible country resolvers */}
+      {prieres.map(p => (
+        <CountryResolver
+          key={p.id}
+          prayerId={p.id}
+          lat={p.mosqueeLatitude}
+          lon={p.mosqueeLongitude}
+          adresse={p.mosqueeAdresse}
+          onResolve={handleCountryResolve}
+        />
+      ))}
+
       {/* Prières à venir */}
       <section className="section section-light">
         <div className={showMap ? 'prieres-map-container' : 'container'}>
@@ -355,6 +402,19 @@ export default function LandingPage() {
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
+
+                  {uniqueCountries.length > 0 && (
+                    <select
+                      className="tile-filter-select"
+                      value={filterCountry}
+                      onChange={(e) => setFilterCountry(e.target.value)}
+                    >
+                      <option value="">Tous les pays</option>
+                      {uniqueCountries.map(({ iso, label }) => (
+                        <option key={iso} value={iso}>{label}</option>
+                      ))}
+                    </select>
+                  )}
 
                   <button
                     className={`filter-pill filter-pill-geo${sortProximity ? ' active' : ''}`}

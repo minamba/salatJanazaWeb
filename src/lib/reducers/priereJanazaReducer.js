@@ -6,11 +6,9 @@ import {
   DELETE_PRIERE_SUCCESS, DELETE_PRIERE_FAILURE,
   POLL_PRIERES_SUCCESS, DISMISS_JANAZA_TOAST, SHOW_JANAZA_TOAST, MY_PRIERES_LOADED,
   FETCH_PRIERES_PENDING_REQUEST, FETCH_PRIERES_PENDING_SUCCESS, FETCH_PRIERES_PENDING_FAILURE,
-  JANAZA_EXPIRE,
 } from '../actions/priereJanazaActions';
 import { REFUSER_MOSQUEE_SUCCESS } from '../actions/mosqueeActions';
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const CACHE_KEY = 'qabr_prieres_list';
 
 // Persiste la liste dans sessionStorage pour repopuler le store instantanément
@@ -129,10 +127,11 @@ export default function priereJanazaReducer(state = initialState, action) {
       return { ...state, error: action.payload };
 
     case POLL_PRIERES_SUCCESS: {
-      const nextList = mergeList(action.payload.list, state.list);
+      // Le poll est fiable : on fait toujours confiance au serveur (y compris liste vide).
+      // Le serveur exclut lui-même les prières expirées depuis > 90 min.
       return {
         ...state,
-        list: saveList(nextList),
+        list: saveList(action.payload.list),
         toasts: [
           ...action.payload.newPrieres.map((p) => ({ ...p, toastId: `${p.id}-${Date.now()}` })),
           ...state.toasts,
@@ -148,17 +147,6 @@ export default function priereJanazaReducer(state = initialState, action) {
 
     case DISMISS_JANAZA_TOAST:
       return { ...state, toasts: state.toasts.filter((t) => t.toastId !== action.payload) };
-
-    case JANAZA_EXPIRE: {
-      const nextList = state.list.filter((p) => {
-        if (!p.dateHeurePriere) return false;
-        const trueUtcMs = new Date(p.dateHeurePriere + 'Z').getTime() - (p.utcOffsetMinutes ?? 0) * 60_000;
-        return Date.now() - trueUtcMs < TWO_HOURS_MS;
-      });
-      // Ne jamais vider entièrement la liste côté client (le serveur gère l'expiration).
-      // Ne pas sauvegarder dans sessionStorage — le cache reflète l'état serveur, pas le filtrage local.
-      return { ...state, list: nextList.length > 0 ? nextList : state.list };
-    }
 
     default:
       return state;

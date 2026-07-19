@@ -603,7 +603,7 @@ export default function DeclarePriereForm() {
     anneNaissance:   '',
     anneDeces:       String(new Date().getFullYear()),
     paysEnterrement: '',
-    countryKnown:    true,
+    countryKnown:    false,
     villeEnterrement:'',
     relation:        '',
     nomsProches:     '',
@@ -701,7 +701,7 @@ export default function DeclarePriereForm() {
     const prayerDate = form.dateHeurePriere ? new Date(form.dateHeurePriere + 'Z') : new Date();
     const utcOffsetMinutes = computeUtcOffsetMinutes(
       form.countryKnown ? form.paysEnterrement : '',
-      selectedMosquee.longitude,
+      -new Date().getTimezoneOffset(),
       prayerDate,
     );
     dispatch(createPriere({
