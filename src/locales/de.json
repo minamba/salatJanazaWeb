@@ -213,7 +213,10 @@
     "my_prayers": "Meine Meldungen",
     "declare": "+ Gebet melden",
     "admin": "Verwaltung",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "all_genres": "Alle Geschlechter",
+    "admin_badge": "Administratorkonto",
+    "delete_confirm": "Dieses Gebet löschen?"
   },
   "avis": {
     "subtitle": "Todesanzeige",
@@ -246,6 +249,9 @@
     "import_verify_body": "Die KI hat die Informationen aus dem Flyer extrahiert. Sie ist nicht unfehlbar: Überprüfen Sie, ob alle Informationen korrekt sind.",
     "import_verify_time_unknown": "⚠️ Die Gebetszeit ist 00:00 — die KI konnte diese Information nicht extrahieren. Bitte geben Sie sie manuell ein.",
     "import_verify_close": "Verstanden",
+    "import_validate_btn": "Erklärung bestätigen",
+    "import_publish_btn": "Gebet veröffentlichen",
+    "import_publish_error": "Veröffentlichungsfehler",
     "import_view_declaration": "Meldung anzeigen",
     "choose_method_title": "Wie möchten Sie melden?",
     "choose_manual": "Manuelle Eingabe",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Als PNG herunterladen",
     "preview_generating": "Wird erstellt…",
     "clear": "Löschen"
+  },
+  "profile": {
+    "nav": "Mein Profil",
+    "title": "Mein Profil",
+    "personal_info": "Persönliche Informationen",
+    "firstname": "Vorname",
+    "lastname": "Nachname",
+    "email": "E-Mail",
+    "email_hint": "Die E-Mail-Adresse kann nicht geändert werden",
+    "home_address": "Heimatadresse",
+    "home_address_hint": "Wird verwendet, um Ihnen Totengebete in Ihrer Nähe anzuzeigen",
+    "address_label": "Adresse",
+    "address_placeholder": "z. B. Friedensstraße 1, Berlin",
+    "address_autocomplete_hint": "Wählen Sie einen Vorschlag oder geben Sie die vollständige Adresse ein",
+    "address_not_found": "Adresse nicht gefunden. Bitte Stadt oder Land angeben.",
+    "phone": "Telefon",
+    "phone_placeholder": "z. B. +49 151 00000000",
+    "optional": "optional",
+    "address_clear": "Adresse entfernen",
+    "save": "Speichern",
+    "saving": "Wird gespeichert...",
+    "save_success": "Profil erfolgreich aktualisiert",
+    "save_error": "Fehler beim Speichern. Bitte erneut versuchen."
   },
   "banner": {
     "live": "Live",

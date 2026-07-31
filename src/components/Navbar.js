@@ -10,6 +10,7 @@ const LANGS = [
   { code: 'fr', fi: 'fr' },
   { code: 'en', fi: 'gb' },
   { code: 'ar', fi: 'sa' },
+  { code: 'bm', fi: 'ml' },
   { code: 'tr', fi: 'tr' },
   { code: 'ja', fi: 'jp' },
   { code: 'ko', fi: 'kr' },

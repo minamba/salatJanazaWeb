@@ -19,6 +19,15 @@ const GENRE_IMG = { homme: hommeImg, femme: femmeImg, enfant: enfantImg };
 const STATUT_LABEL = { AVenir: 'À venir', EnCours: 'En cours', Terminee: 'Terminée' };
 const STATUT_CLS   = { AVenir: 'avenir',  EnCours: 'encours',  Terminee: 'terminee' };
 
+const PREVIEW_LANGS = [
+  { code: 'fr', flag: 'fr' }, { code: 'en', flag: 'gb' }, { code: 'ar', flag: 'sa' },
+  { code: 'tr', flag: 'tr' }, { code: 'de', flag: 'de' }, { code: 'es', flag: 'es' },
+  { code: 'it', flag: 'it' }, { code: 'pt', flag: 'pt' }, { code: 'ru', flag: 'ru' },
+  { code: 'ja', flag: 'jp' }, { code: 'ko', flag: 'kr' }, { code: 'ms', flag: 'my' },
+  { code: 'id', flag: 'id' }, { code: 'ur', flag: 'pk' }, { code: 'bn', flag: 'bd' },
+  { code: 'bm', flag: 'ml' },
+];
+
 
 // Bounding boxes for common countries (fallback if Nominatim bounds are bad)
 const COUNTRY_BOUNDS = {
@@ -180,7 +189,11 @@ function fmtDateLabel(d) {
 
 // ─── Share modal (portal, rendered outside the Leaflet popup) ────────────────
 function ShareModal({ priere, onClose }) {
+  const { t, i18n } = useTranslation();
+  const [previewLang, setPreviewLang] = useState(() => i18n.language?.split('-')[0] ?? 'fr');
+  useEffect(() => { setPreviewLang(i18n.language?.split('-')[0] ?? 'fr'); }, [i18n.language]);
   const cardRef = useRef(null);
+  const langBarRef = useRef(null);
   const [sharing, setSharing] = useState(false);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
@@ -224,13 +237,29 @@ function ShareModal({ priere, onClose }) {
       <div className="avis-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="avis-modal-topbar">
           <button className="avis-modal-close" onClick={onClose}>✕</button>
-          <span className="avis-modal-title">Avis de décès</span>
+          <span className="avis-modal-title">{t('avis.subtitle')}</span>
           <button className="avis-modal-share-btn" onClick={handleDownload} disabled={sharing}>
-            {sharing ? '…' : '↓ Télécharger'}
+            {sharing ? '…' : t('declare.preview_download')}
           </button>
         </div>
+        <div className="avis-lang-wrap">
+          <button className="avis-lang-arrow" onClick={() => langBarRef.current?.scrollBy({ left: -150, behavior: 'smooth' })} aria-label="Previous">‹</button>
+          <div className="avis-lang-bar" ref={langBarRef}>
+            {PREVIEW_LANGS.map(({ code, flag }) => (
+              <button
+                key={code}
+                className={`avis-lang-btn${previewLang === code ? ' active' : ''}`}
+                onClick={() => setPreviewLang(code)}
+                title={code}
+              >
+                <span className={`fi fi-${flag}`} />
+              </button>
+            ))}
+          </div>
+          <button className="avis-lang-arrow" onClick={() => langBarRef.current?.scrollBy({ left: 150, behavior: 'smooth' })} aria-label="Next">›</button>
+        </div>
         <div className="avis-modal-preview-scroll">
-          <AvisDecesCard ref={cardRef} data={cardData} />
+          <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} />
         </div>
       </div>
     </div>,

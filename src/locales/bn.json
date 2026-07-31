@@ -213,7 +213,10 @@
     "my_prayers": "আমার ঘোষণাসমূহ",
     "declare": "+ নামাজ ঘোষণা করুন",
     "admin": "প্রশাসন",
-    "logout": "প্রস্থান"
+    "logout": "প্রস্থান",
+    "all_genres": "সব লিঙ্গ",
+    "admin_badge": "প্রশাসক অ্যাকাউন্ট",
+    "delete_confirm": "এই নামাজ মুছবেন?"
   },
   "avis": {
     "subtitle": "মৃত্যু ঘোষণা",
@@ -246,6 +249,9 @@
     "import_verify_body": "AI ফ্লায়ার থেকে তথ্য বের করেছে। এটি নিখুঁত নয়: সমস্ত তথ্য সঠিক কিনা যাচাই করুন।",
     "import_verify_time_unknown": "⚠️ নামাজের সময় ০০:০০ — AI এই তথ্য বের করতে পারেনি। অনুগ্রহ করে ম্যানুয়ালি প্রবেশ করুন।",
     "import_verify_close": "বুঝেছি",
+    "import_validate_btn": "ঘোষণা যাচাই করুন",
+    "import_publish_btn": "নামাজ প্রকাশ করুন",
+    "import_publish_error": "প্রকাশনা ত্রুটি",
     "import_view_declaration": "ঘোষণা দেখুন",
     "choose_method_title": "আপনি কীভাবে ঘোষণা করতে চান?",
     "choose_manual": "ম্যানুয়াল প্রবেশ",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ PNG হিসেবে ডাউনলোড করুন",
     "preview_generating": "তৈরি হচ্ছে…",
     "clear": "মুছুন"
+  },
+  "profile": {
+    "nav": "আমার প্রোফাইল",
+    "title": "আমার প্রোফাইল",
+    "personal_info": "ব্যক্তিগত তথ্য",
+    "firstname": "প্রথম নাম",
+    "lastname": "পদবি",
+    "email": "ইমেইল",
+    "email_hint": "ইমেইল ঠিকানা পরিবর্তন করা যাবে না",
+    "home_address": "বাড়ির ঠিকানা",
+    "home_address_hint": "আপনার বাড়ির কাছের জানাজার নামাজ দেখাতে ব্যবহার করা হয়",
+    "address_label": "ঠিকানা",
+    "address_placeholder": "যেমন: শান্তি সড়ক ১, ঢাকা",
+    "address_autocomplete_hint": "একটি পরামর্শ বেছে নিন অথবা সম্পূর্ণ ঠিকানা লিখুন",
+    "address_not_found": "ঠিকানা পাওয়া যায়নি। শহর বা দেশ উল্লেখ করুন।",
+    "phone": "ফোন",
+    "phone_placeholder": "যেমন: +880 1700-000000",
+    "optional": "ঐচ্ছিক",
+    "address_clear": "ঠিকানা মুছুন",
+    "save": "সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ হচ্ছে...",
+    "save_success": "প্রোফাইল সফলভাবে আপডেট হয়েছে",
+    "save_error": "সংরক্ষণে ত্রুটি। আবার চেষ্টা করুন।"
   },
   "banner": {
     "live": "সরাসরি",

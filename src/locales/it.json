@@ -213,7 +213,10 @@
     "my_prayers": "Le mie dichiarazioni",
     "declare": "+ Dichiarare una preghiera",
     "admin": "Amministrazione",
-    "logout": "Disconnessione"
+    "logout": "Disconnessione",
+    "all_genres": "Tutti i generi",
+    "admin_badge": "Account amministratore",
+    "delete_confirm": "Eliminare questa preghiera?"
   },
   "avis": {
     "subtitle": "Annuncio di decesso",
@@ -246,6 +249,9 @@
     "import_verify_body": "L'IA ha estratto le informazioni dalla locandina. Non è infallibile: verificate che tutte le informazioni siano corrette.",
     "import_verify_time_unknown": "⚠️ L'orario della preghiera è alle 00:00 — l'IA non ha potuto estrarre questa informazione. Si prega di inserirla manualmente.",
     "import_verify_close": "Ho capito",
+    "import_validate_btn": "Convalida la dichiarazione",
+    "import_publish_btn": "Pubblica la preghiera",
+    "import_publish_error": "Errore di pubblicazione",
     "import_view_declaration": "Vedi la dichiarazione",
     "choose_method_title": "Come desiderate dichiarare?",
     "choose_manual": "Inserimento manuale",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Scarica in PNG",
     "preview_generating": "Generazione…",
     "clear": "Cancella"
+  },
+  "profile": {
+    "nav": "Il mio profilo",
+    "title": "Il mio profilo",
+    "personal_info": "Informazioni personali",
+    "firstname": "Nome",
+    "lastname": "Cognome",
+    "email": "Email",
+    "email_hint": "L'indirizzo email non può essere modificato",
+    "home_address": "Indirizzo di casa",
+    "home_address_hint": "Usato per mostrarti le preghiere funebri vicino a casa tua",
+    "address_label": "Indirizzo",
+    "address_placeholder": "Es: Via della Pace 1, Roma",
+    "address_autocomplete_hint": "Seleziona un suggerimento o inserisci l'indirizzo completo",
+    "address_not_found": "Indirizzo non trovato. Specifica la città o il paese.",
+    "phone": "Telefono",
+    "phone_placeholder": "Es: +39 340 000 0000",
+    "optional": "facoltativo",
+    "address_clear": "Rimuovi indirizzo",
+    "save": "Salva",
+    "saving": "Salvataggio...",
+    "save_success": "Profilo aggiornato con successo",
+    "save_error": "Errore durante il salvataggio. Riprova."
   },
   "banner": {
     "live": "In diretta",

@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import mosqueeImg    from '../assets/icon3.png';
 import invocationImg from '../assets/invocation.png';
 import { capitalizeFirst, parseNomDefunt } from '../lib/utils';
@@ -30,7 +30,13 @@ function prepPays(pays) {
   return 'en';
 }
 
-const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
+const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES', bm: 'fr-FR' };
+
+function renderBold(str) {
+  if (!str) return null;
+  const parts = str.split(/<bold>(.*?)<\/bold>/);
+  return parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p);
+}
 
 function fmtDate(d, lang) {
   const locale = LOCALE_MAP[lang] ?? 'fr-FR';
@@ -44,9 +50,10 @@ function fmtHeure(d, lang) {
   return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 
-const AvisDecesCard = forwardRef(({ data }, ref) => {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language?.split('-')[0] ?? 'fr';
+const AvisDecesCard = forwardRef(({ data, previewLang }, ref) => {
+  const { t: tGlobal, i18n } = useTranslation();
+  const t = previewLang ? i18n.getFixedT(previewLang) : tGlobal;
+  const lang = (previewLang ?? i18n.language)?.split('-')[0] ?? 'fr';
   const isAr = lang === 'ar';
 
   const {
@@ -70,20 +77,21 @@ const AvisDecesCard = forwardRef(({ data }, ref) => {
     else nomDisplay = t('avis.community_brother');
     sousNom = t('avis.unknown');
   } else {
-    const civilite = isAr ? '' : (isF ? t('card.civility_female') : g === 'homme' ? t('card.civility_male') : '');
-    const nom = parseNomDefunt(nomDefunt ?? '').display;
-    nomDisplay = civilite ? `${civilite} ${nom.toUpperCase()}` : nom.toUpperCase();
+    const parsed = parseNomDefunt(nomDefunt ?? '');
+    const hasLastName = !!parsed.familleNom;
+    const civilite = (!isAr && hasLastName) ? (isF ? t('card.civility_female') : g === 'homme' ? t('card.civility_male') : '') : '';
+    nomDisplay = civilite ? `${civilite} ${parsed.display.toUpperCase()}` : parsed.display.toUpperCase();
     sousNom = null;
   }
 
   // ── Family announce sentence ──────────────────────────────────────────────────
   const familyAnnounce = nomFamille
-    ? <Trans i18nKey="avis.family_announce" values={{ name: nomFamille.toUpperCase() }} components={{ bold: <strong /> }} />
-    : <>{t('avis.community_announce')}</>;
+    ? renderBold(t('avis.family_announce', { name: nomFamille.toUpperCase() }))
+    : t('avis.community_announce');
 
   // ── Burial text ───────────────────────────────────────────────────────────────
   const burialNode = burialStr
-    ? <Trans i18nKey="avis.burial_in" values={{ prep: prepPays(paysEnterrement), location: burialStr }} components={{ bold: <strong /> }} />
+    ? renderBold(t('avis.burial_in', { prep: prepPays(paysEnterrement), location: burialStr }))
     : null;
 
   // ── Dua ───────────────────────────────────────────────────────────────────────

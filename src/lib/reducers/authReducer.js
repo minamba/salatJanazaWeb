@@ -8,6 +8,7 @@ import {
   RESET_PASSWORD_REQUEST, RESET_PASSWORD_SUCCESS, RESET_PASSWORD_FAILURE,
   AUTH_RESET, RESTORE_AUTH,
   REFRESH_USER_PROFILE_SUCCESS,
+  UPDATE_PROFILE_SUCCESS,
 } from '../actions/authActions';
 
 const savedUser = authStorage.getUser();
@@ -93,6 +94,12 @@ export default function authReducer(state = initialState, action) {
 
     case REFRESH_USER_PROFILE_SUCCESS: {
       const updated = { ...state.user, canImportFlyer: action.payload.canImportFlyer };
+      authStorage.setUser(updated);
+      return { ...state, user: updated };
+    }
+
+    case UPDATE_PROFILE_SUCCESS: {
+      const updated = { ...state.user, prenom: action.payload.prenom, nom: action.payload.nom };
       authStorage.setUser(updated);
       return { ...state, user: updated };
     }

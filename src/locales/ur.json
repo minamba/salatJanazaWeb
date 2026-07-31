@@ -213,7 +213,10 @@
     "my_prayers": "میرے اعلانات",
     "declare": "+ نماز کا اعلان کریں",
     "admin": "انتظامیہ",
-    "logout": "لاگ آؤٹ"
+    "logout": "لاگ آؤٹ",
+    "all_genres": "تمام جنسیں",
+    "admin_badge": "ایڈمن اکاؤنٹ",
+    "delete_confirm": "یہ نماز حذف کریں؟"
   },
   "avis": {
     "subtitle": "وفات کا اعلان",
@@ -246,6 +249,9 @@
     "import_verify_body": "AI نے فلائر سے معلومات نکالی ہیں۔ یہ ہمیشہ درست نہیں ہوتا: یقینی کریں کہ تمام معلومات صحیح ہیں۔",
     "import_verify_time_unknown": "⚠️ نماز کا وقت 00:00 ہے — AI یہ معلومات نہیں نکال سکا۔ براہ کرم دستی درج کریں۔",
     "import_verify_close": "سمجھ گیا",
+    "import_validate_btn": "اعلان کی تصدیق کریں",
+    "import_publish_btn": "نماز شائع کریں",
+    "import_publish_error": "اشاعت کی خرابی",
     "import_view_declaration": "اعلان دیکھیں",
     "choose_method_title": "آپ کیسے اعلان کرنا چاہتے ہیں؟",
     "choose_manual": "دستی درج کریں",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ PNG ڈاؤن لوڈ کریں",
     "preview_generating": "بنایا جا رہا ہے…",
     "clear": "مٹائیں"
+  },
+  "profile": {
+    "nav": "میری پروفائل",
+    "title": "میری پروفائل",
+    "personal_info": "ذاتی معلومات",
+    "firstname": "پہلا نام",
+    "lastname": "آخری نام",
+    "email": "ای میل",
+    "email_hint": "ای میل ایڈریس تبدیل نہیں کیا جا سکتا",
+    "home_address": "گھر کا پتہ",
+    "home_address_hint": "آپ کے گھر کے قریب جنازے کی نمازیں دکھانے کے لیے استعمال ہوتا ہے",
+    "address_label": "پتہ",
+    "address_placeholder": "مثال: سڑک نمبر 1، کراچی",
+    "address_autocomplete_hint": "کوئی تجویز منتخب کریں یا مکمل پتہ درج کریں",
+    "address_not_found": "پتہ نہیں ملا۔ براہ کرم شہر یا ملک بتائیں۔",
+    "phone": "فون",
+    "phone_placeholder": "مثال: +92 300 0000000",
+    "optional": "اختیاری",
+    "address_clear": "پتہ ہٹائیں",
+    "save": "محفوظ کریں",
+    "saving": "محفوظ ہو رہا ہے...",
+    "save_success": "پروفائل کامیابی سے اپ ڈیٹ ہو گئی",
+    "save_error": "محفوظ کرنے میں خرابی۔ دوبارہ کوشش کریں۔"
   },
   "banner": {
     "live": "براہ راست",

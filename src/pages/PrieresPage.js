@@ -105,7 +105,7 @@ export default function PrieresPage() {
   }, [user]);
 
   const isMobile = window.innerWidth <= 700;
-  const [view, setView]       = useState(isMobile ? 'tile' : 'map');
+  const [view, setView]       = useState('tile');
   const [mapMode, setMapMode] = useState('country');
 
   const controlsRef = useRef(null);

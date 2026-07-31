@@ -11,6 +11,8 @@ import {
 } from '../lib/actions/utilisateurActions';
 import { apiClient } from '../lib/api/axiosConfig';
 import { formatNomDefunt } from '../lib/utils';
+import { geocodeAddress } from '../lib/geocode';
+import AdminDashboardTab from './AdminDashboardTab';
 
 // ─── Modal shell ─────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
@@ -47,14 +49,8 @@ function SearchBar({ value, onChange, placeholder }) {
   );
 }
 
-// ─── Nominatim geocoder ───────────────────────────────────────────────────────
-async function geocodeAdresse(adresse) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse)}&format=json&limit=1`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
-  const data = await res.json();
-  if (!data.length) throw new Error('Adresse introuvable. Précisez la ville ou le pays.');
-  return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
-}
+// Alias pour compatibilité avec le code existant
+const geocodeAdresse = geocodeAddress;
 
 function normalize(str) {
   return (str ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -683,6 +679,9 @@ export default function AdminPage() {
           </button>
           <button className={`btn ${tab === 'importation' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('importation')}>
             Importation
+          </button>
+          <button className={`btn ${tab === 'dashboard' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('dashboard')}>
+            Dashboard
           </button>
         </div>
 
@@ -1330,6 +1329,9 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* ── DASHBOARD ── */}
+        {tab === 'dashboard' && <AdminDashboardTab />}
       </div>
 
       {/* ── MODAL: Edit Mosquée ── */}

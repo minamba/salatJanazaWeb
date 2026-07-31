@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
@@ -23,6 +23,15 @@ const GENRE_IMG = {
 };
 
 const LOCALE_MAP = { fr: 'fr-FR', en: 'en-US', ar: 'ar-SA', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', ms: 'ms-MY', ur: 'ur-PK', id: 'id-ID', bn: 'bn-BD', ru: 'ru-RU', pt: 'pt-BR', de: 'de-DE', it: 'it-IT', es: 'es-ES' };
+
+const PREVIEW_LANGS = [
+  { code: 'fr', flag: 'fr' }, { code: 'en', flag: 'gb' }, { code: 'ar', flag: 'sa' },
+  { code: 'tr', flag: 'tr' }, { code: 'de', flag: 'de' }, { code: 'es', flag: 'es' },
+  { code: 'it', flag: 'it' }, { code: 'pt', flag: 'pt' }, { code: 'ru', flag: 'ru' },
+  { code: 'ja', flag: 'jp' }, { code: 'ko', flag: 'kr' }, { code: 'ms', flag: 'my' },
+  { code: 'id', flag: 'id' }, { code: 'ur', flag: 'pk' }, { code: 'bn', flag: 'bd' },
+  { code: 'bm', flag: 'ml' },
+];
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -108,7 +117,11 @@ function IconShare() {
 }
 
 function AvisDecesModal({ priere, onClose }) {
+  const { t, i18n } = useTranslation();
+  const [previewLang, setPreviewLang] = useState(() => i18n.language?.split('-')[0] ?? 'fr');
+  useEffect(() => { setPreviewLang(i18n.language?.split('-')[0] ?? 'fr'); }, [i18n.language]);
   const cardRef = useRef(null);
+  const langBarRef = useRef(null);
   const [sharing, setSharing] = useState(false);
   const [iosImg, setIosImg] = useState(null);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -160,25 +173,43 @@ function AvisDecesModal({ priere, onClose }) {
       <div className="avis-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="avis-modal-topbar">
           <button className="avis-modal-close" onClick={iosImg ? () => setIosImg(null) : onClose}>
-            {iosImg ? '← Retour' : '✕'}
+            {iosImg ? t('declare.preview_back') : '✕'}
           </button>
-          <span className="avis-modal-title">{iosImg ? 'Enregistrer' : 'Avis de décès'}</span>
+          <span className="avis-modal-title">{iosImg ? t('declare.preview_save_title') : t('avis.subtitle')}</span>
           {iosImg ? <span /> : (
             <button className="avis-modal-share-btn" onClick={handleShare} disabled={sharing}>
-              {sharing ? '…' : <><IconShare /> Télécharger</>}
+              {sharing ? '…' : <><IconShare /> {t('declare.preview_share')}</>}
             </button>
           )}
         </div>
+        {!iosImg && (
+          <div className="avis-lang-wrap">
+            <button className="avis-lang-arrow" onClick={() => langBarRef.current?.scrollBy({ left: -150, behavior: 'smooth' })} aria-label="Previous">‹</button>
+            <div className="avis-lang-bar" ref={langBarRef}>
+              {PREVIEW_LANGS.map(({ code, flag }) => (
+                <button
+                  key={code}
+                  className={`avis-lang-btn${previewLang === code ? ' active' : ''}`}
+                  onClick={() => setPreviewLang(code)}
+                  title={code}
+                >
+                  <span className={`fi fi-${flag}`} />
+                </button>
+              ))}
+            </div>
+            <button className="avis-lang-arrow" onClick={() => langBarRef.current?.scrollBy({ left: 150, behavior: 'smooth' })} aria-label="Next">›</button>
+          </div>
+        )}
         {iosImg ? (
           <div className="avis-modal-preview-scroll" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', gap: '0.75rem' }}>
             <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#555', margin: 0 }}>
-              Appuyez longuement sur l'image pour l'enregistrer dans votre galerie 📷
+              {t('declare.preview_ios_hint')}
             </p>
             <img src={iosImg} alt="Avis de décès" style={{ maxWidth: '100%', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }} />
           </div>
         ) : (
           <div className="avis-modal-preview-scroll">
-            <AvisDecesCard ref={cardRef} data={cardData} />
+            <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} />
           </div>
         )}
       </div>
@@ -286,7 +317,7 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
           <button
             className="pc-share"
             onClick={() => setShowShare(true)}
-            title="Générer l'annonce"
+            title={t('avis.subtitle')}
           >
             <IconShare />
           </button>

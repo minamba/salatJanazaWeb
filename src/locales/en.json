@@ -213,7 +213,10 @@
     "my_prayers": "My declarations",
     "declare": "+ Declare a prayer",
     "admin": "Administration",
-    "logout": "Log out"
+    "logout": "Log out",
+    "all_genres": "All genders",
+    "admin_badge": "Administrator account",
+    "delete_confirm": "Delete this prayer?"
   },
   "avis": {
     "subtitle": "Death announcement",
@@ -246,6 +249,9 @@
     "import_verify_body": "The AI has extracted the information from the flyer. It is not perfect — please check that all the information is correct.",
     "import_verify_time_unknown": "⚠️ The prayer time is set to 00:00 — the AI could not extract this information. Please enter it manually.",
     "import_verify_close": "Got it",
+    "import_validate_btn": "Validate declaration",
+    "import_publish_btn": "Publish prayer",
+    "import_publish_error": "Publication error",
     "import_view_declaration": "View the declaration",
     "choose_method_title": "How would you like to declare?",
     "choose_manual": "Manual entry",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Download as PNG",
     "preview_generating": "Generating…",
     "clear": "Clear"
+  },
+  "profile": {
+    "nav": "My profile",
+    "title": "My profile",
+    "personal_info": "Personal information",
+    "firstname": "First name",
+    "lastname": "Last name",
+    "email": "Email",
+    "email_hint": "Email address cannot be changed",
+    "home_address": "Home address",
+    "home_address_hint": "Used to show you funeral prayers near your home",
+    "address_label": "Address",
+    "address_placeholder": "E.g. 1 Peace Street, London",
+    "address_autocomplete_hint": "Select a suggestion or type the full address",
+    "address_not_found": "Address not found. Please specify the city or country.",
+    "phone": "Phone",
+    "phone_placeholder": "E.g. +44 7700 900000",
+    "optional": "optional",
+    "address_clear": "Remove address",
+    "save": "Save",
+    "saving": "Saving...",
+    "save_success": "Profile updated successfully",
+    "save_error": "Error saving profile. Please try again."
   },
   "banner": {
     "live": "Live",

@@ -54,7 +54,7 @@ export default function LandingPage() {
   const isAdmin = user?.role && ['admin', 'superadmin'].includes(user.role.toLowerCase());
 
   const isMobile = window.innerWidth <= 700;
-  const [showMap, setShowMap]     = useState(!isMobile);
+  const [showMap, setShowMap]     = useState(false);
   const [mapMode, setMapMode]     = useState('country');
   const [userPos, setUserPos]     = useState(null);
   const [filterNom,     setFilterNom]     = useState('');

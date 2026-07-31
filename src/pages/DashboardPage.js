@@ -10,6 +10,7 @@ import DeclarePriereForm from './shared/DeclarePriereForm';
 import PriereCard from './shared/PriereCard';
 import EditPriereModal, { buildInitialForm, buildPayload } from './shared/EditPriereModal';
 import { getUtilisateurByIdentityId } from '../lib/api/utilisateurApi';
+import ProfilePage from './ProfilePage';
 
 function normalize(str) {
   return (str ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -112,7 +113,7 @@ export default function DashboardPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const handleDelete = (id) => {
-    if (window.confirm('Supprimer cette prière ?')) dispatch(deletePriere(id));
+    if (window.confirm(t('dashboard.delete_confirm'))) dispatch(deletePriere(id));
   };
 
   const openEdit = (priere) => {
@@ -145,6 +146,7 @@ export default function DashboardPage() {
         <nav className="dashboard-nav">
           <Link to="/tableau-de-bord">{t('dashboard.my_prayers')}</Link>
           <Link to="/tableau-de-bord/declarer" onClick={handleDeclare}>{t('dashboard.declare')}</Link>
+          <Link to="/tableau-de-bord/profil">{t('profile.nav')}</Link>
           {isAdmin && (
             <Link to="/admin">{t('dashboard.admin')}</Link>
           )}
@@ -162,7 +164,7 @@ export default function DashboardPage() {
                   <h2 style={{ margin: 0 }}>{t('dashboard.title')}</h2>
                   {isAdmin && (
                     <span style={{ background: '#e8f0fe', color: '#1a56db', fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: '999px', fontWeight: 500 }}>
-                      Compte administrateur
+                      {t('dashboard.admin_badge')}
                     </span>
                   )}
                 </div>
@@ -175,10 +177,10 @@ export default function DashboardPage() {
                       value={filterGenre}
                       onChange={(e) => setFilterGenre(e.target.value)}
                     >
-                      <option value="">Tous les genres</option>
-                      <option value="homme">Homme</option>
-                      <option value="femme">Femme</option>
-                      <option value="enfant">Enfant</option>
+                      <option value="">{t('dashboard.all_genres')}</option>
+                      <option value="homme">{t('card.genre.homme')}</option>
+                      <option value="femme">{t('card.genre.femme')}</option>
+                      <option value="enfant">{t('card.genre.enfant')}</option>
                     </select>
 
                     <select
@@ -186,7 +188,7 @@ export default function DashboardPage() {
                       value={filterMosquee}
                       onChange={(e) => setFilterMosquee(e.target.value)}
                     >
-                      <option value="">Toutes les mosquées</option>
+                      <option value="">{t('prieres.all_mosques')}</option>
                       {uniqueMosquees.map((m) => (
                         <option key={m} value={m}>{m}</option>
                       ))}
@@ -197,7 +199,7 @@ export default function DashboardPage() {
                       value={filterDate}
                       onChange={(e) => setFilterDate(e.target.value)}
                     >
-                      <option value="">Toutes les dates</option>
+                      <option value="">{t('prieres.all_dates')}</option>
                       {uniqueDates.map(({ value, label }) => (
                         <option key={value} value={value}>{label}</option>
                       ))}
@@ -205,7 +207,7 @@ export default function DashboardPage() {
 
                     {hasFilter && (
                       <button className="filter-clear" onClick={clearFilters}>
-                        Effacer les filtres
+                        {t('prieres.reset_filters')}
                       </button>
                     )}
 
@@ -229,8 +231,8 @@ export default function DashboardPage() {
 
                 {!displayLoading && filteredPrieres.length === 0 && hasFilter && (
                   <div className="empty-state">
-                    <p>Aucune prière ne correspond aux filtres.</p>
-                    <button className="btn btn-outline" onClick={clearFilters}>Effacer les filtres</button>
+                    <p>{t('prieres.no_match')}</p>
+                    <button className="btn btn-outline" onClick={clearFilters}>{t('prieres.reset_filters')}</button>
                   </div>
                 )}
 
@@ -251,6 +253,7 @@ export default function DashboardPage() {
             }
           />
           <Route path="declarer" element={<DeclarePriereForm />} />
+          <Route path="profil" element={<ProfilePage />} />
         </Routes>
       </div>
 

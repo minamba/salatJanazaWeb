@@ -13,6 +13,7 @@ import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeAp
 import AvisDecesCard from '../../components/AvisDecesCard';
 import { capitalizeFirst } from '../../lib/utils';
 import { apiClient } from '../../lib/api/axiosConfig';
+import { geocodeAddress } from '../../lib/geocode';
 import { computeUtcOffsetMinutes } from '../../lib/timezoneUtils';
 
 registerLocale('fr', fr);
@@ -243,17 +244,13 @@ function AddMosqueeForm({ onClose }) {
     try {
       let finalCoords = coords;
       if (!finalCoords) {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adresse.trim())}&format=json&limit=1`,
-          { headers: { 'Accept-Language': 'fr' } }
-        );
-        const data = await res.json();
-        if (!data.length) {
+        const geo = await geocodeAddress(adresse.trim()).catch(() => null);
+        if (!geo) {
           setAdresseError(t('declare.add_mosque_addr_error_not_found'));
           setSaving(false);
           return;
         }
-        finalCoords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        finalCoords = { lat: geo.latitude, lon: geo.longitude };
       }
       await createMosqueeSuggestion({
         nom: formatted,
@@ -733,7 +730,7 @@ export default function DeclarePriereForm() {
     commentaire:      form.commentaire,
     mosqueeNom:       selectedMosquee?.nom,
     mosqueeAdresse:   selectedMosquee?.adresse,
-    dateHeurePriere:  form.dateHeurePriere,
+    dateHeurePriere:  form.dateHeurePriere ? form.dateHeurePriere + 'Z' : undefined,
   };
 
   const canPreview = !!(form.dateHeurePriere && (form.nomDefunt || form.estAnonyme));

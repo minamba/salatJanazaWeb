@@ -213,7 +213,10 @@
     "my_prayers": "Bildirimlerim",
     "declare": "+ Namaz bildir",
     "admin": "Yönetim",
-    "logout": "Çıkış"
+    "logout": "Çıkış",
+    "all_genres": "Tüm cinsiyetler",
+    "admin_badge": "Yönetici hesabı",
+    "delete_confirm": "Bu namazı sil?"
   },
   "avis": {
     "subtitle": "Vefat Duyurusu",
@@ -246,6 +249,9 @@
     "import_verify_body": "Yapay zeka afişten bilgileri çıkardı. Yanılabilir: tüm bilgilerin doğru olduğunu kontrol ediniz.",
     "import_verify_time_unknown": "⚠️ Namaz saati 00:00 olarak gösteriliyor — yapay zeka bu bilgiyi çıkaramadı. Lütfen manuel olarak giriniz.",
     "import_verify_close": "Anladım",
+    "import_validate_btn": "Beyanı doğrula",
+    "import_publish_btn": "Namazı yayınla",
+    "import_publish_error": "Yayın hatası",
     "import_view_declaration": "Bildirimi Görüntüle",
     "choose_method_title": "Nasıl bildirmek istersiniz?",
     "choose_manual": "Manuel giriş",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ PNG olarak İndir",
     "preview_generating": "Oluşturuluyor…",
     "clear": "Temizle"
+  },
+  "profile": {
+    "nav": "Profilim",
+    "title": "Profilim",
+    "personal_info": "Kişisel bilgiler",
+    "firstname": "Ad",
+    "lastname": "Soyad",
+    "email": "E-posta",
+    "email_hint": "E-posta adresi değiştirilemez",
+    "home_address": "Ev adresi",
+    "home_address_hint": "Evinize yakın cenaze namazlarını göstermek için kullanılır",
+    "address_label": "Adres",
+    "address_placeholder": "Örn: Barış Caddesi No:1, İstanbul",
+    "address_autocomplete_hint": "Bir öneri seçin veya tam adresi yazın",
+    "address_not_found": "Adres bulunamadı. Lütfen şehir veya ülkeyi belirtin.",
+    "phone": "Telefon",
+    "phone_placeholder": "Örn: +90 532 000 00 00",
+    "optional": "isteğe bağlı",
+    "address_clear": "Adresi kaldır",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "save_success": "Profil başarıyla güncellendi",
+    "save_error": "Kaydetme hatası. Lütfen tekrar deneyin."
   },
   "banner": {
     "live": "Canlı",

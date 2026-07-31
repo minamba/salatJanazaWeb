@@ -213,7 +213,10 @@
     "my_prayers": "Mis declaraciones",
     "declare": "+ Declarar una oración",
     "admin": "Administración",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "all_genres": "Todos los géneros",
+    "admin_badge": "Cuenta de administrador",
+    "delete_confirm": "¿Eliminar esta oración?"
   },
   "avis": {
     "subtitle": "Anuncio de fallecimiento",
@@ -246,6 +249,9 @@
     "import_verify_body": "La IA ha extraído la información del cartel. No es infalible: verifique que toda la información sea correcta.",
     "import_verify_time_unknown": "⚠️ El horario de la oración es a las 00:00 — la IA no ha podido extraer esta información. Por favor, introdúzcala manualmente.",
     "import_verify_close": "Entendido",
+    "import_validate_btn": "Validar declaración",
+    "import_publish_btn": "Publicar oración",
+    "import_publish_error": "Error de publicación",
     "import_view_declaration": "Ver la declaración",
     "choose_method_title": "¿Cómo desea declarar?",
     "choose_manual": "Introducción manual",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Descargar en PNG",
     "preview_generating": "Generando…",
     "clear": "Borrar"
+  },
+  "profile": {
+    "nav": "Mi perfil",
+    "title": "Mi perfil",
+    "personal_info": "Información personal",
+    "firstname": "Nombre",
+    "lastname": "Apellido",
+    "email": "Correo electrónico",
+    "email_hint": "El correo electrónico no se puede cambiar",
+    "home_address": "Dirección de casa",
+    "home_address_hint": "Se utiliza para mostrarle oraciones fúnebres cerca de su casa",
+    "address_label": "Dirección",
+    "address_placeholder": "Ej: Calle de la Paz 1, Madrid",
+    "address_autocomplete_hint": "Seleccione una sugerencia o escriba la dirección completa",
+    "address_not_found": "Dirección no encontrada. Especifique la ciudad o el país.",
+    "phone": "Teléfono",
+    "phone_placeholder": "Ej: +34 600 000 000",
+    "optional": "opcional",
+    "address_clear": "Eliminar dirección",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "save_success": "Perfil actualizado con éxito",
+    "save_error": "Error al guardar. Por favor, inténtelo de nuevo."
   },
   "banner": {
     "live": "En directo",

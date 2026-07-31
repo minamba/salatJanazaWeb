@@ -213,7 +213,10 @@
     "my_prayers": "Laporan saya",
     "declare": "+ Laporkan sholat",
     "admin": "Administrasi",
-    "logout": "Keluar"
+    "logout": "Keluar",
+    "all_genres": "Semua jenis kelamin",
+    "admin_badge": "Akun administrator",
+    "delete_confirm": "Hapus sholat ini?"
   },
   "avis": {
     "subtitle": "Pengumuman kematian",
@@ -246,6 +249,9 @@
     "import_verify_body": "AI telah mengekstrak informasi dari flyer. AI tidak sempurna: verifikasi bahwa semua informasi sudah benar.",
     "import_verify_time_unknown": "⚠️ Waktu sholat adalah 00:00 — AI tidak dapat mengekstrak informasi ini. Harap isi secara manual.",
     "import_verify_close": "Saya mengerti",
+    "import_validate_btn": "Validasi deklarasi",
+    "import_publish_btn": "Terbitkan shalat",
+    "import_publish_error": "Kesalahan penerbitan",
     "import_view_declaration": "Lihat laporan",
     "choose_method_title": "Bagaimana Anda ingin melaporkan?",
     "choose_manual": "Input manual",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Unduh dalam PNG",
     "preview_generating": "Sedang membuat…",
     "clear": "Bersihkan"
+  },
+  "profile": {
+    "nav": "Profil saya",
+    "title": "Profil saya",
+    "personal_info": "Informasi pribadi",
+    "firstname": "Nama depan",
+    "lastname": "Nama belakang",
+    "email": "Email",
+    "email_hint": "Alamat email tidak dapat diubah",
+    "home_address": "Alamat rumah",
+    "home_address_hint": "Digunakan untuk menampilkan shalat jenazah di dekat rumah Anda",
+    "address_label": "Alamat",
+    "address_placeholder": "Cth: Jl. Damai No. 1, Jakarta",
+    "address_autocomplete_hint": "Pilih saran atau ketik alamat lengkap",
+    "address_not_found": "Alamat tidak ditemukan. Harap tentukan kota atau negara.",
+    "phone": "Telepon",
+    "phone_placeholder": "Cth: +62 812-0000-0000",
+    "optional": "opsional",
+    "address_clear": "Hapus alamat",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "save_success": "Profil berhasil diperbarui",
+    "save_error": "Kesalahan saat menyimpan. Silakan coba lagi."
   },
   "banner": {
     "live": "Siaran Langsung",

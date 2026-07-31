@@ -213,7 +213,10 @@
     "my_prayers": "Mes déclarations",
     "declare": "+ Déclarer une prière",
     "admin": "Administration",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "all_genres": "Tous les genres",
+    "admin_badge": "Compte administrateur",
+    "delete_confirm": "Supprimer cette prière ?"
   },
   "avis": {
     "subtitle": "Annonce de décès",
@@ -246,6 +249,9 @@
     "import_verify_body": "L'IA a extrait les informations du flyer. Elle n'est pas infaillible : vérifiez que toutes les informations sont correctes.",
     "import_verify_time_unknown": "⚠️ L'horaire de la prière est à 00h00 — l'IA n'a pas pu extraire cette information. Veuillez la renseigner manuellement.",
     "import_verify_close": "J'ai compris",
+    "import_validate_btn": "Valider la déclaration",
+    "import_publish_btn": "Publier la prière",
+    "import_publish_error": "Erreur de publication",
     "import_view_declaration": "Voir la déclaration",
     "choose_method_title": "Comment voulez-vous déclarer ?",
     "choose_manual": "Saisie manuelle",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Télécharger en PNG",
     "preview_generating": "Génération…",
     "clear": "Effacer"
+  },
+  "profile": {
+    "nav": "Mon profil",
+    "title": "Mon profil",
+    "personal_info": "Informations personnelles",
+    "firstname": "Prénom",
+    "lastname": "Nom",
+    "email": "Email",
+    "email_hint": "L'adresse email ne peut pas être modifiée",
+    "home_address": "Adresse de domicile",
+    "home_address_hint": "Utilisée pour vous montrer les prières funéraires près de chez vous",
+    "address_label": "Adresse",
+    "address_placeholder": "Ex : 1 Rue de la Paix, Paris",
+    "address_autocomplete_hint": "Sélectionnez une suggestion ou saisissez l'adresse complète",
+    "address_not_found": "Adresse introuvable. Précisez la ville ou le pays.",
+    "phone": "Téléphone",
+    "phone_placeholder": "Ex : +33 6 12 34 56 78",
+    "optional": "optionnel",
+    "address_clear": "Supprimer l'adresse",
+    "save": "Enregistrer",
+    "saving": "Enregistrement...",
+    "save_success": "Profil mis à jour avec succès",
+    "save_error": "Erreur lors de l'enregistrement. Réessayez."
   },
   "banner": {
     "live": "En direct",

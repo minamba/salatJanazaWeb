@@ -163,8 +163,10 @@ function MosqueeSearchField({ defaultName, onSelect, onClear }) {
   );
 }
 
-export default function EditPriereModal({ priere, form, setForm, onClose, onSubmit }) {
+export default function EditPriereModal({ priere, form, setForm, onClose, onSubmit, submitLabel, isSubmitting, externalError }) {
   const { saving, saveError } = useSelector((s) => s.priereJanaza);
+  const busy = isSubmitting !== undefined ? isSubmitting : saving;
+  const errorMsg = externalError || saveError;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -314,11 +316,11 @@ export default function EditPriereModal({ priere, form, setForm, onClose, onSubm
                 </div>
               </div>
             )}
-            {saveError && <div className="alert alert-error">{saveError}</div>}
+            {errorMsg && <div className="alert alert-error">{errorMsg}</div>}
             <div className="modal-footer">
               <button type="button" className="btn btn-outline" onClick={onClose}>Annuler</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy ? 'Enregistrement...' : (submitLabel || 'Enregistrer')}
               </button>
             </div>
           </form>

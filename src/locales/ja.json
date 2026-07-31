@@ -213,7 +213,10 @@
     "my_prayers": "マイ申告",
     "declare": "+ 礼拝を申告する",
     "admin": "管理",
-    "logout": "ログアウト"
+    "logout": "ログアウト",
+    "all_genres": "すべての性別",
+    "admin_badge": "管理者アカウント",
+    "delete_confirm": "この礼拝を削除しますか？"
   },
   "avis": {
     "subtitle": "訃報",
@@ -246,6 +249,9 @@
     "import_verify_body": "AIがチラシから情報を抽出しました。AIは完璧ではありません：すべての情報が正確であることを確認してください。",
     "import_verify_time_unknown": "⚠️ 礼拝の時刻が00:00になっています — AIがこの情報を抽出できませんでした。手動で入力してください。",
     "import_verify_close": "了解しました",
+    "import_validate_btn": "申告を確認",
+    "import_publish_btn": "礼拝を公開",
+    "import_publish_error": "公開エラー",
     "import_view_declaration": "申告を見る",
     "choose_method_title": "どのように申告しますか？",
     "choose_manual": "手動入力",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ PNGでダウンロード",
     "preview_generating": "生成中…",
     "clear": "クリアする"
+  },
+  "profile": {
+    "nav": "マイプロフィール",
+    "title": "マイプロフィール",
+    "personal_info": "個人情報",
+    "firstname": "名",
+    "lastname": "姓",
+    "email": "メールアドレス",
+    "email_hint": "メールアドレスは変更できません",
+    "home_address": "自宅住所",
+    "home_address_hint": "自宅近くの葬儀礼拝を表示するために使用します",
+    "address_label": "住所",
+    "address_placeholder": "例：東京都千代田区平和1-1",
+    "address_autocomplete_hint": "候補を選択するか、完全な住所を入力してください",
+    "address_not_found": "住所が見つかりません。市区町村または国を指定してください。",
+    "phone": "電話番号",
+    "phone_placeholder": "例：+81 90-0000-0000",
+    "optional": "任意",
+    "address_clear": "住所を削除",
+    "save": "保存",
+    "saving": "保存中...",
+    "save_success": "プロフィールが更新されました",
+    "save_error": "保存中にエラーが発生しました。もう一度お試しください。"
   },
   "banner": {
     "live": "ライブ",

@@ -213,7 +213,10 @@
     "my_prayers": "Isytiharan Saya",
     "declare": "+ Isytihar Solat",
     "admin": "Pentadbiran",
-    "logout": "Log Keluar"
+    "logout": "Log Keluar",
+    "all_genres": "Semua jantina",
+    "admin_badge": "Akaun pentadbir",
+    "delete_confirm": "Padam solat ini?"
   },
   "avis": {
     "subtitle": "Pengumuman Kematian",
@@ -246,6 +249,9 @@
     "import_verify_body": "AI telah mengekstrak maklumat dari poster. Ia tidak sempurna: semak bahawa semua maklumat adalah betul.",
     "import_verify_time_unknown": "⚠️ Waktu solat adalah pada 00:00 — AI tidak dapat mengekstrak maklumat ini. Sila masukkan secara manual.",
     "import_verify_close": "Saya Faham",
+    "import_validate_btn": "Sahkan pengisytiharan",
+    "import_publish_btn": "Terbitkan solat",
+    "import_publish_error": "Ralat penerbitan",
     "import_view_declaration": "Lihat Isytiharan",
     "choose_method_title": "Bagaimana anda ingin mengisytiharkan?",
     "choose_manual": "Isi Manual",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ Muat Turun PNG",
     "preview_generating": "Sedang menjana...",
     "clear": "Padam"
+  },
+  "profile": {
+    "nav": "Profil saya",
+    "title": "Profil saya",
+    "personal_info": "Maklumat peribadi",
+    "firstname": "Nama pertama",
+    "lastname": "Nama keluarga",
+    "email": "E-mel",
+    "email_hint": "Alamat e-mel tidak boleh diubah",
+    "home_address": "Alamat rumah",
+    "home_address_hint": "Digunakan untuk menunjukkan solat jenazah berhampiran rumah anda",
+    "address_label": "Alamat",
+    "address_placeholder": "Cth: No 1 Jalan Damai, Kuala Lumpur",
+    "address_autocomplete_hint": "Pilih cadangan atau taip alamat penuh",
+    "address_not_found": "Alamat tidak dijumpai. Sila nyatakan bandar atau negara.",
+    "phone": "Telefon",
+    "phone_placeholder": "Cth: +60 12-000 0000",
+    "optional": "pilihan",
+    "address_clear": "Buang alamat",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "save_success": "Profil berjaya dikemaskini",
+    "save_error": "Ralat semasa menyimpan. Sila cuba lagi."
   },
   "banner": {
     "live": "Langsung",

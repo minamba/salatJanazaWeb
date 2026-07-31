@@ -213,7 +213,10 @@
     "my_prayers": "내 신고",
     "declare": "+ 예배 신고",
     "admin": "관리자",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "all_genres": "모든 성별",
+    "admin_badge": "관리자 계정",
+    "delete_confirm": "이 기도를 삭제하시겠습니까?"
   },
   "avis": {
     "subtitle": "사망 공지",
@@ -246,6 +249,9 @@
     "import_verify_body": "AI가 전단지에서 정보를 추출했습니다. 완벽하지 않을 수 있으니 모든 정보가 올바른지 확인해 주십시오.",
     "import_verify_time_unknown": "⚠️ 예배 시간이 00:00으로 설정되었습니다 — AI가 이 정보를 추출하지 못했습니다. 직접 입력해 주십시오.",
     "import_verify_close": "확인",
+    "import_validate_btn": "신고 확인",
+    "import_publish_btn": "기도 게시",
+    "import_publish_error": "게시 오류",
     "import_view_declaration": "신고 보기",
     "choose_method_title": "어떻게 신고하시겠습니까?",
     "choose_manual": "직접 입력",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ PNG로 다운로드",
     "preview_generating": "생성 중…",
     "clear": "지우기"
+  },
+  "profile": {
+    "nav": "내 프로필",
+    "title": "내 프로필",
+    "personal_info": "개인 정보",
+    "firstname": "이름",
+    "lastname": "성",
+    "email": "이메일",
+    "email_hint": "이메일 주소는 변경할 수 없습니다",
+    "home_address": "집 주소",
+    "home_address_hint": "집 근처의 장례 예배를 표시하는 데 사용됩니다",
+    "address_label": "주소",
+    "address_placeholder": "예: 서울특별시 종로구 평화로 1",
+    "address_autocomplete_hint": "제안을 선택하거나 전체 주소를 입력하세요",
+    "address_not_found": "주소를 찾을 수 없습니다. 도시 또는 국가를 지정해 주세요.",
+    "phone": "전화번호",
+    "phone_placeholder": "예: +82 10-0000-0000",
+    "optional": "선택 사항",
+    "address_clear": "주소 삭제",
+    "save": "저장",
+    "saving": "저장 중...",
+    "save_success": "프로필이 성공적으로 업데이트되었습니다",
+    "save_error": "저장 중 오류가 발생했습니다. 다시 시도해 주세요."
   },
   "banner": {
     "live": "라이브",

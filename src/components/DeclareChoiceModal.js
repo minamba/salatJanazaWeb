@@ -1,18 +1,16 @@
 import { useRef, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDeclareModal } from '../context/DeclareModalContext';
 import { apiClient } from '../lib/api/axiosConfig';
 import EditPriereModal from '../pages/shared/EditPriereModal';
 import { buildInitialForm, buildPayload } from '../pages/shared/EditPriereModal';
-import { updatePriere } from '../lib/actions/priereJanazaActions';
 
 export default function DeclareChoiceModal() {
   const { open, closeModal } = useDeclareModal();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const dispatch = useDispatch();
   const user = useSelector(s => s.auth.user);
   const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
 
@@ -28,6 +26,8 @@ export default function DeclareChoiceModal() {
   const [importedPriere, setImportedPriere] = useState(null);
   const [priereForm, setPriereForm] = useState({});
   const [showEditModal, setShowEditModal] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishError, setPublishError] = useState(null);
 
   if (!open) return null;
 
@@ -42,6 +42,8 @@ export default function DeclareChoiceModal() {
     setImportedPriere(null);
     setPriereForm({});
     setShowEditModal(false);
+    setPublishLoading(false);
+    setPublishError(null);
     closeModal();
   }
 
@@ -160,12 +162,21 @@ export default function DeclareChoiceModal() {
     navigate('/tableau-de-bord');
   }
 
-  function handleSavePriere(e) {
+  async function handleSavePriere(e) {
     e.preventDefault();
     if (!importedPriere) return;
-    dispatch(updatePriere(importedPriere.id, buildPayload(priereForm)));
-    resetAndClose();
-    navigate('/tableau-de-bord');
+    setPublishError(null);
+    setPublishLoading(true);
+    try {
+      await apiClient.post(`/api/prierejanaza/${importedPriere.id}/publish`, buildPayload(priereForm));
+      resetAndClose();
+      navigate('/tableau-de-bord');
+    } catch (err) {
+      const msg = err?.response?.data?.error || t('declare.import_error_generic');
+      setPublishError(msg);
+    } finally {
+      setPublishLoading(false);
+    }
   }
 
   return (
@@ -274,7 +285,7 @@ export default function DeclareChoiceModal() {
                 if (importedPriere) setShowEditModal(true);
                 else handleGoToDeclarations();
               }}>
-                {t('declare.import_view_declaration')}
+                {t('declare.import_validate_btn')}
               </button>
               <button className="btn btn-outline" onClick={resetAndClose}>
                 {t('declare.import_verify_close')}
@@ -313,8 +324,11 @@ export default function DeclareChoiceModal() {
           priere={importedPriere}
           form={priereForm}
           setForm={setPriereForm}
-          onClose={() => setShowEditModal(false)}
+          onClose={() => { setShowEditModal(false); setPublishError(null); }}
           onSubmit={handleSavePriere}
+          submitLabel={t('declare.import_publish_btn')}
+          isSubmitting={publishLoading}
+          externalError={publishError}
         />
       )}
     </div>

@@ -15,8 +15,9 @@ import pt from './locales/pt.json';
 import de from './locales/de.json';
 import it from './locales/it.json';
 import es from './locales/es.json';
+import bm from './locales/bm.json';
 
-const SUPPORTED_LANGUAGES = ['fr', 'en', 'ar', 'tr', 'ja', 'ko', 'ms', 'ur', 'id', 'bn', 'ru', 'pt', 'de', 'it', 'es'];
+const SUPPORTED_LANGUAGES = ['fr', 'en', 'ar', 'tr', 'ja', 'ko', 'ms', 'ur', 'id', 'bn', 'ru', 'pt', 'de', 'it', 'es', 'bm'];
 const RTL_LANGS = new Set(['ar', 'ur']);
 
 async function detectLangFromIP() {
@@ -58,6 +59,7 @@ i18n.use(initReactI18next).init({
     de: { translation: de },
     it: { translation: it },
     es: { translation: es },
+    bm: { translation: bm },
   },
   lng: initialLng,
   fallbackLng: 'en',

@@ -213,7 +213,10 @@
     "my_prayers": "إعلاناتي",
     "declare": "+ الإعلان عن صلاة",
     "admin": "الإدارة",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "all_genres": "جميع الجنسين",
+    "admin_badge": "حساب المسؤول",
+    "delete_confirm": "حذف هذه الصلاة؟"
   },
   "avis": {
     "subtitle": "إعلان وفاة",
@@ -246,6 +249,9 @@
     "import_verify_body": "قام الذكاء الاصطناعي باستخراج المعلومات من الإعلان. قد تحدث أخطاء — تأكد من صحة جميع المعلومات.",
     "import_verify_time_unknown": "⚠️ وقت الصلاة مضبوط على 00:00 — لم يتمكن الذكاء الاصطناعي من استخراج هذه المعلومة. يرجى إدخالها يدوياً.",
     "import_verify_close": "فهمت",
+    "import_validate_btn": "التحقق من الإعلان",
+    "import_publish_btn": "نشر الصلاة",
+    "import_publish_error": "خطأ في النشر",
     "import_view_declaration": "عرض الإعلان",
     "choose_method_title": "كيف تريد الإعلان؟",
     "choose_manual": "إدخال يدوي",
@@ -317,6 +323,29 @@
     "preview_download": "⬇ تنزيل بصيغة PNG",
     "preview_generating": "جارٍ الإنشاء…",
     "clear": "مسح"
+  },
+  "profile": {
+    "nav": "ملفي الشخصي",
+    "title": "ملفي الشخصي",
+    "personal_info": "المعلومات الشخصية",
+    "firstname": "الاسم الأول",
+    "lastname": "الاسم الأخير",
+    "email": "البريد الإلكتروني",
+    "email_hint": "لا يمكن تغيير عنوان البريد الإلكتروني",
+    "home_address": "عنوان المنزل",
+    "home_address_hint": "يُستخدم لعرض صلوات الجنازة القريبة من منزلك",
+    "address_label": "العنوان",
+    "address_placeholder": "مثال: شارع السلام 1، القاهرة",
+    "address_autocomplete_hint": "اختر اقتراحاً أو أدخل العنوان كاملاً",
+    "address_not_found": "العنوان غير موجود. يرجى تحديد المدينة أو البلد.",
+    "phone": "الهاتف",
+    "phone_placeholder": "مثال: +966 50 000 0000",
+    "optional": "اختياري",
+    "address_clear": "حذف العنوان",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ...",
+    "save_success": "تم تحديث الملف الشخصي بنجاح",
+    "save_error": "خطأ في الحفظ. يرجى المحاولة مجدداً."
   },
   "banner": {
     "live": "مباشر",
