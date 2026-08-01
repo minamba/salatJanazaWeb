@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import L from 'leaflet';
 import html2canvas from 'html2canvas';
 import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../lib/utils';
+import { useCountryFlag, commentaireVisibleForLang } from '../lib/countryFlag';
 import { computeStatut, useMinuteTick } from '../lib/statut';
 import { deletePriere } from '../lib/actions/priereJanazaActions';
 import AvisDecesCard from './AvisDecesCard';
@@ -195,6 +196,8 @@ function ShareModal({ priere, onClose }) {
   const cardRef = useRef(null);
   const langBarRef = useRef(null);
   const [sharing, setSharing] = useState(false);
+  const mosqueeIsoCode = useCountryFlag(priere.mosqueeLatitude, priere.mosqueeLongitude);
+  const showCommentaire = commentaireVisibleForLang(mosqueeIsoCode, previewLang);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
   const nomFamille = parseNomDefunt(rawNom).familleNom;
@@ -259,7 +262,7 @@ function ShareModal({ priere, onClose }) {
           <button className="avis-lang-arrow" onClick={() => langBarRef.current?.scrollBy({ left: 150, behavior: 'smooth' })} aria-label="Next">›</button>
         </div>
         <div className="avis-modal-preview-scroll">
-          <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} />
+          <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} showCommentaire={showCommentaire} mosqueeIsoCode={mosqueeIsoCode} />
         </div>
       </div>
     </div>,
@@ -271,8 +274,10 @@ function ShareModal({ priere, onClose }) {
 const STATUT_I18N = { AVenir: 'avenir', EnCours: 'encours', Terminee: 'terminee' };
 
 function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole, onDelete }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [shareItem, setShareItem] = useState(null);
+  const mosqueeIsoCode = useCountryFlag(lat, lng);
+  const showCommentaire = commentaireVisibleForLang(mosqueeIsoCode, i18n.language);
   useMinuteTick();
   const first = items[0];
   const distKm = userPos ? haversineKm(userPos[0], userPos[1], lat, lng) : null;
@@ -345,7 +350,7 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                       )}
                     </div>
                   </div>
-                  {p.commentaire && (
+                  {p.commentaire && showCommentaire && (
                     <div className="mpp-commentaire">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0, marginTop:2}}>
                         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>

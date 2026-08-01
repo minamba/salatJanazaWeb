@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useShowCountryName } from '../lib/useShowCountryName';
 import mosqueeImg    from '../assets/icon3.png';
 import invocationImg from '../assets/invocation.png';
 import { capitalizeFirst, parseNomDefunt } from '../lib/utils';
@@ -50,8 +51,18 @@ function fmtHeure(d, lang) {
   return new Date(d).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 
-const AvisDecesCard = forwardRef(({ data, previewLang }, ref) => {
+function getCountryName(iso, lang) {
+  if (!iso) return null;
+  try {
+    return new Intl.DisplayNames([lang ?? 'fr'], { type: 'region' }).of(iso.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+const AvisDecesCard = forwardRef(({ data, previewLang, showCommentaire = true, mosqueeIsoCode = null }, ref) => {
   const { t: tGlobal, i18n } = useTranslation();
+  const [showCountryName] = useShowCountryName();
   const t = previewLang ? i18n.getFixedT(previewLang) : tGlobal;
   const lang = (previewLang ?? i18n.language)?.split('-')[0] ?? 'fr';
   const isAr = lang === 'ar';
@@ -105,10 +116,21 @@ const AvisDecesCard = forwardRef(({ data, previewLang }, ref) => {
       {/* ── Header ── */}
       <div className="avis-header">
         <img src={mosqueeImg} alt="" className="avis-header-icon" />
-        <div>
+        <div style={{ flex: 1 }}>
           <div className="avis-header-title">Salat al-Janaza</div>
           <div className="avis-header-sub">{t('avis.subtitle')}</div>
         </div>
+        {mosqueeIsoCode && (
+          <div className="avis-header-country">
+            <img
+              src={`https://flagcdn.com/w40/${mosqueeIsoCode.toLowerCase()}.png`}
+              alt={mosqueeIsoCode}
+              className="avis-header-flag-img"
+              crossOrigin="anonymous"
+            />
+            {showCountryName && <span className="avis-header-country-name">{getCountryName(mosqueeIsoCode, lang)}</span>}
+          </div>
+        )}
       </div>
 
       {/* ── Body ── */}
@@ -125,7 +147,7 @@ const AvisDecesCard = forwardRef(({ data, previewLang }, ref) => {
           <div className="avis-name">{nomDisplay}</div>
           {sousNom && <div className="avis-sous-nom">{sousNom}</div>}
           {hasYears && <div className="avis-years">{anneNaissance} – {anneDeces}</div>}
-          {commentaire && <p className="avis-commentaire">{commentaire}</p>}
+          {commentaire && showCommentaire && <p className="avis-commentaire">{commentaire}</p>}
         </div>
 
         <div className="avis-sep-line" />

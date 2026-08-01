@@ -30,6 +30,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((s) => s.auth);
+  const donationButtonVisible = useSelector((s) => s.features?.donationButtonVisible ?? true);
   const { openModal } = useDeclareModal();
   const [menuOpen, setMenuOpen] = useState(false);
   const canImport = !!(user?.canImportFlyer || ['admin', 'superadmin'].includes(user?.role?.toLowerCase()));
@@ -81,9 +82,11 @@ export default function Navbar() {
             }}
           >{t('nav.declare')}</Link>
           <Link to="/contact" onClick={() => setMenuOpen(false)}>{t('nav.contact')}</Link>
-          <Link to="/soutenez-nous" className="navbar-donate" onClick={() => setMenuOpen(false)}>
-            {t('nav.support')}
-          </Link>
+          {donationButtonVisible && (
+            <Link to="/soutenez-nous" className="navbar-donate" onClick={() => setMenuOpen(false)}>
+              {t('nav.support')}
+            </Link>
+          )}
           {isAuthenticated ? (
             <>
               <Link to="/tableau-de-bord" onClick={() => setMenuOpen(false)}>{t('nav.account')}</Link>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { apiClient } from '../lib/api/axiosConfig';
+import { useShowCountryName } from '../lib/useShowCountryName';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const PERIODS = [
@@ -334,6 +335,10 @@ export default function AdminDashboardTab() {
   const [genreFilter, setGenreFilter] = useState(null);
   const [stats,       setStats]       = useState(null);
   const [loading,     setLoading]     = useState(false);
+  const dispatch = useDispatch();
+  const donationButtonVisible = useSelector(s => s.features?.donationButtonVisible ?? true);
+  const [showCountryName, setShowCountryName] = useShowCountryName();
+  const [savingFeature, setSavingFeature] = useState(false);
 
   const prieresCount   = useSelector(s => s.priereJanaza?.list?.length ?? 0);
   const prevPrieresRef = useRef(prieresCount);
@@ -372,6 +377,19 @@ export default function AdminDashboardTab() {
   }, [period, refDate, genreFilter]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  const toggleDonationButton = useCallback(async (value) => {
+    dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: value } });
+    setSavingFeature(true);
+    try {
+      const res = await apiClient.put('/api/features/donation-button', { visible: value });
+      dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: res.data.donationButtonVisible } });
+    } catch {
+      dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: !value } });
+    } finally {
+      setSavingFeature(false);
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     if (prevPrieresRef.current !== prieresCount) {
@@ -535,8 +553,73 @@ export default function AdminDashboardTab() {
 
           {/* ── Global platform stats ───────────────── */}
           <GlobalStatsCard globalStats={stats?.globalStats} />
+
+          {/* ── Fonctionnalités ─────────────────────── */}
+          <div style={{ ...card, marginTop: '1rem' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>
+              Fonctionnalités
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>❤️</span>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1f2937' }}>Bouton "Nous soutenir"</div>
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Visible sur mobile et web</div>
+                </div>
+              </div>
+              {savingFeature ? (
+                <div style={{ width: 40, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 16, height: 16, border: '2px solid #3A6B4A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                </div>
+              ) : (
+                <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={donationButtonVisible}
+                    onChange={e => toggleDonationButton(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', inset: 0,
+                    background: donationButtonVisible ? '#3A6B4A' : '#d1d5db',
+                    borderRadius: 12,
+                    transition: 'background 0.2s',
+                  }} />
+                  <span style={{
+                    position: 'absolute',
+                    top: 3, left: donationButtonVisible ? 23 : 3,
+                    width: 18, height: 18,
+                    background: '#fff',
+                    borderRadius: '50%',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </label>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>🏳️</span>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1f2937' }}>Nom du pays sur les affiches</div>
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Affiché sous le drapeau dans l'aperçu</div>
+                </div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={showCountryName}
+                  onChange={e => setShowCountryName(e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{ position: 'absolute', inset: 0, background: showCountryName ? '#3A6B4A' : '#d1d5db', borderRadius: 12, transition: 'background 0.2s' }} />
+                <span style={{ position: 'absolute', top: 3, left: showCountryName ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </label>
+            </div>
+          </div>
         </div>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

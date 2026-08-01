@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
 import { capitalizeFirst, parseNomDefunt, formatNomDefunt } from '../../lib/utils';
 import { computeStatut, useMinuteTick } from '../../lib/statut';
-import { useCountryFlag } from '../../lib/countryFlag';
+import { useCountryFlag, commentaireVisibleForLang } from '../../lib/countryFlag';
 import hommeImg from '../../assets/homme.png';
 import femmeImg from '../../assets/femme.png';
 import enfantImg from '../../assets/enfant.png';
@@ -125,6 +125,8 @@ function AvisDecesModal({ priere, onClose }) {
   const [sharing, setSharing] = useState(false);
   const [iosImg, setIosImg] = useState(null);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const mosqueeIsoCode = useCountryFlag(priere.mosqueeLatitude, priere.mosqueeLongitude);
+  const showCommentaire = commentaireVisibleForLang(mosqueeIsoCode, previewLang);
 
   const rawNom = priere.estAnonyme ? '' : (priere.nomDefunt ?? '');
   const nomFamille = parseNomDefunt(rawNom).familleNom;
@@ -209,7 +211,7 @@ function AvisDecesModal({ priere, onClose }) {
           </div>
         ) : (
           <div className="avis-modal-preview-scroll">
-            <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} />
+            <AvisDecesCard ref={cardRef} data={cardData} previewLang={previewLang} showCommentaire={showCommentaire} mosqueeIsoCode={mosqueeIsoCode} />
           </div>
         )}
       </div>
@@ -293,7 +295,7 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
           </span>
         </div>
 
-        {priere.commentaire && (
+        {priere.commentaire && commentaireVisibleForLang(isoCode, i18n.language) && (
           <p className="pc-comment">"{priere.commentaire}"</p>
         )}
       </div>

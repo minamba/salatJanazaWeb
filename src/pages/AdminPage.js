@@ -183,6 +183,8 @@ export default function AdminPage() {
   const [importTxtContent, setImportTxtContent] = useState('');
   const [importTxtLoading, setImportTxtLoading] = useState(false);
   const [importTxtResult, setImportTxtResult] = useState(null);
+  const [donationButtonVisible, setDonationButtonVisible] = useState(true);
+  const [featureLoading, setFeatureLoading] = useState(false);
 
   // ── Toast notification ────────────────────────────────────────────────────────
   const [notif, setNotif] = useState(null);
@@ -241,6 +243,9 @@ export default function AdminPage() {
     dispatch(fetchMosquees());
     dispatch(fetchPrieres());
     dispatch(fetchUtilisateurs());
+    apiClient.get('/api/features')
+      .then(res => setDonationButtonVisible(res.data.donationButtonVisible))
+      .catch(() => {});
   }, [dispatch]);
 
   useEffect(() => {
@@ -255,6 +260,19 @@ export default function AdminPage() {
       dispatch(fetchPrieresEnAttente());
     }
   }, [tab, prieresSubTab, dispatch]);
+
+  const toggleDonationButton = useCallback(async (value) => {
+    setFeatureLoading(true);
+    try {
+      const res = await apiClient.put('/api/features/donation-button', { visible: value });
+      setDonationButtonVisible(res.data.donationButtonVisible);
+      showNotif(`Bouton "Nous soutenir" ${res.data.donationButtonVisible ? 'activé' : 'désactivé'}`);
+    } catch {
+      showNotif('Erreur lors de la mise à jour', 'error');
+    } finally {
+      setFeatureLoading(false);
+    }
+  }, [showNotif]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const getDeclarantName = useCallback((utilisateurId) => {
@@ -682,6 +700,9 @@ export default function AdminPage() {
           </button>
           <button className={`btn ${tab === 'dashboard' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('dashboard')}>
             Dashboard
+          </button>
+          <button className={`btn ${tab === 'parametres' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('parametres')}>
+            Paramètres
           </button>
         </div>
 
@@ -1332,6 +1353,32 @@ export default function AdminPage() {
 
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && <AdminDashboardTab />}
+
+        {tab === 'parametres' && (
+          <div style={{ maxWidth: 520, margin: '0 auto' }}>
+            <div className="admin-table-wrap" style={{ padding: '1.5rem' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1rem', fontWeight: 700 }}>
+                Fonctionnalités de l'application
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Bouton "Nous soutenir"</div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 3 }}>Affiché sur mobile et web</div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: featureLoading ? 'wait' : 'pointer' }}>
+                  {featureLoading && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sauvegarde…</span>}
+                  <input
+                    type="checkbox"
+                    checked={donationButtonVisible}
+                    disabled={featureLoading}
+                    onChange={(e) => toggleDonationButton(e.target.checked)}
+                    style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── MODAL: Edit Mosquée ── */}

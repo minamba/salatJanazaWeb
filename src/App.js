@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { refreshUserProfile } from './lib/actions/authActions';
+import { apiClient } from './lib/api/axiosConfig';
 import './App.css';
 
 import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast } from './components';
@@ -20,6 +21,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import DonatePage from './pages/DonatePage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID ?? '';
 
@@ -38,6 +40,12 @@ function AppRoutes() {
   // Le client-side expire causait un blank de 15-20s toutes les 60s (mergeList guard
   // ne protège pas après que la liste a été vidée localement).
   // Les prières disparaissent naturellement à la prochaine réponse du poll (≤30s).
+
+  useEffect(() => {
+    apiClient.get('/api/features')
+      .then(res => dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: res.data.donationButtonVisible ?? true } }))
+      .catch(() => {});
+  }, [dispatch]);
 
   // Rafraîchit canImportFlyer dès que l'onglet redevient visible ou toutes les 3 minutes
   useEffect(() => {
@@ -67,6 +75,7 @@ function AppRoutes() {
           <Route path="/mosquees" element={<MosqueesPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/soutenez-nous" element={<DonatePage />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/connexion" element={<LoginPage />} />
           <Route path="/inscription" element={<RegisterPage />} />
           <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />

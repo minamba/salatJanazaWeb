@@ -116,6 +116,42 @@ async function nominatimSearch(address) {
   return nominatimReverse(hit.lat, hit.lon);
 }
 
+// Maps ISO country code to expected language(s)
+const COUNTRY_LANG = {
+  FR: ['fr'], BE: ['fr', 'nl', 'de'], CH: ['fr', 'de', 'it'],
+  LU: ['fr', 'de'], MC: ['fr'], SN: ['fr'], ML: ['fr'], CI: ['fr'],
+  BF: ['fr'], NE: ['fr'], GN: ['fr'], TG: ['fr'], BJ: ['fr'],
+  CM: ['fr'], GA: ['fr'], CG: ['fr'], CD: ['fr'], CF: ['fr'],
+  MG: ['fr'], DZ: ['ar', 'fr'], MA: ['ar', 'fr'], TN: ['ar', 'fr'],
+  MR: ['ar', 'fr'], DJ: ['ar', 'fr'], KM: ['ar', 'fr'],
+  SA: ['ar'], EG: ['ar'], IQ: ['ar'], SY: ['ar'], JO: ['ar'],
+  LB: ['ar'], KW: ['ar'], AE: ['ar'], QA: ['ar'], BH: ['ar'],
+  OM: ['ar'], YE: ['ar'], LY: ['ar'], SD: ['ar'], SO: ['ar'],
+  PS: ['ar'], TR: ['tr'], DE: ['de'], AT: ['de'],
+  ES: ['es'], MX: ['es'], AR: ['es'], CO: ['es'], CL: ['es'],
+  PE: ['es'], VE: ['es'], EC: ['es'], BO: ['es'], PY: ['es'],
+  UY: ['es'], GT: ['gt'], HN: ['es'], SV: ['es'], NI: ['es'],
+  CR: ['es'], PA: ['es'], CU: ['es'], DO: ['es'],
+  PT: ['pt'], BR: ['pt'], AO: ['pt'], MZ: ['pt'],
+  IT: ['it'], RU: ['ru'], ID: ['id'], MY: ['ms'],
+  BD: ['bn'], PK: ['ur'], JP: ['ja'], KR: ['ko'],
+  IN: ['hi', 'en'], GB: ['en'], US: ['en'], CA: ['en', 'fr'],
+  AU: ['en'], NZ: ['en'], NG: ['en'], GH: ['en'], KE: ['en'],
+  ZA: ['en', 'af', 'zu'], PH: ['en', 'fil'],
+  IR: ['fa'], AF: ['fa', 'ps'], KZ: ['kk', 'ru'],
+  UZ: ['uz'], TM: ['tk'], KG: ['ky'], TJ: ['tg'],
+  AZ: ['az'], GE: ['ka'], AM: ['hy'],
+  CN: ['zh'], TH: ['th'], VN: ['vi'],
+};
+
+export function commentaireVisibleForLang(mosqueeIsoCode, userLang) {
+  if (!mosqueeIsoCode) return true;
+  const langs = COUNTRY_LANG[mosqueeIsoCode.toUpperCase()];
+  if (!langs) return true;
+  const lang = (userLang ?? 'fr').split('-')[0];
+  return langs.includes(lang);
+}
+
 // Returns ISO 3166-1 alpha-2 code (e.g. "FR", "ID") or null
 export function useCountryFlag(lat, lon, adresse) {
   const [isoCode, setIsoCode] = useState(null);

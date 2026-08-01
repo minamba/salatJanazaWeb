@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../lib/api/axiosConfig';
 
 const PAYPAL_EMAIL = 'minamba.c@gmail.com';
-const STRIPE_LINK = 'https://buy.stripe.com/8x2eVfdb52x00up55M0VO00';
 
 const AMOUNTS = [5, 10, 20, 50];
 
@@ -10,10 +10,23 @@ export default function DonatePage() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(10);
   const [custom, setCustom] = useState('');
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   const amount = custom !== '' ? Number(custom) : selected;
 
   const paypalUrl = `https://www.paypal.com/donate/?business=${encodeURIComponent(PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=Don+Salat+Janaza`;
+
+  const handleStripePayment = async () => {
+    if (!amount || stripeLoading) return;
+    setStripeLoading(true);
+    try {
+      const res = await apiClient.post('/api/payment/checkout', { amountCents: Math.round(amount * 100) });
+      window.location.href = res.data.url;
+    } catch {
+      alert('Impossible de créer le lien de paiement. Réessayez.');
+      setStripeLoading(false);
+    }
+  };
 
   return (
     <div className="page">
@@ -67,6 +80,17 @@ export default function DonatePage() {
           )}
 
           <div className="donate-methods">
+            <button
+              onClick={handleStripePayment}
+              disabled={!amount || stripeLoading}
+              className="donate-btn donate-btn-stripe"
+            >
+              <CardIcon />
+              <span>
+                <small>{t('donate.pay_with')}</small>
+                {stripeLoading ? 'Chargement...' : 'Carte bancaire'}
+              </span>
+            </button>
             <a href={paypalUrl} target="_blank" rel="noopener noreferrer" className="donate-btn donate-btn-paypal">
               <PayPalIcon />
               <span>
@@ -74,7 +98,6 @@ export default function DonatePage() {
                 PayPal
               </span>
             </a>
-
           </div>
 
           <p className="donate-secure">{t('donate.secure')}</p>

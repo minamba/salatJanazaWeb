@@ -11,6 +11,7 @@ import { enGB } from 'date-fns/locale/en-GB';
 import { createPriere, resetCreatePriere, SHOW_JANAZA_TOAST } from '../../lib/actions/priereJanazaActions';
 import { searchMosquees, createMosqueeSuggestion } from '../../lib/api/mosqueeApi';
 import AvisDecesCard from '../../components/AvisDecesCard';
+import { useCountryFlag, commentaireVisibleForLang } from '../../lib/countryFlag';
 import { capitalizeFirst } from '../../lib/utils';
 import { apiClient } from '../../lib/api/axiosConfig';
 import { geocodeAddress } from '../../lib/geocode';
@@ -475,7 +476,7 @@ function YearSelect({ value, onChange, placeholder }) {
 }
 
 // ── Preview modal ─────────────────────────────────────────────────────────────
-function PreviewModal({ data, onClose }) {
+function PreviewModal({ data, onClose, showCommentaire = true, mosqueeIsoCode = null }) {
   const { t } = useTranslation();
   const cardRef   = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -557,7 +558,7 @@ function PreviewModal({ data, onClose }) {
           </div>
         ) : (
           <div className="preview-modal-body">
-            <AvisDecesCard ref={cardRef} data={data} />
+            <AvisDecesCard ref={cardRef} data={data} showCommentaire={showCommentaire} mosqueeIsoCode={mosqueeIsoCode} />
           </div>
         )}
 
@@ -607,6 +608,8 @@ export default function DeclarePriereForm() {
   });
 
   const [selectedMosquee, setSelectedMosquee] = useState(null);
+  const mosqueeIsoCode = useCountryFlag(selectedMosquee?.latitude, selectedMosquee?.longitude);
+  const showCommentaire = commentaireVisibleForLang(mosqueeIsoCode, i18n.language);
   const [showAddMosquee,  setShowAddMosquee]  = useState(false);
   const [submitError,     setSubmitError]     = useState('');
   const [submitting,      setSubmitting]      = useState(false);
@@ -1058,7 +1061,7 @@ export default function DeclarePriereForm() {
       </div>
 
       {showPreview && (
-        <PreviewModal data={cardData} onClose={() => setShowPreview(false)} />
+        <PreviewModal data={cardData} onClose={() => setShowPreview(false)} showCommentaire={showCommentaire} mosqueeIsoCode={mosqueeIsoCode} />
       )}
 
       {showImportVerify && (

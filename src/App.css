@@ -3226,6 +3226,11 @@ img { max-width: 100%; }
   color: white;
 }
 
+.donate-btn-stripe {
+  background: #635BFF;
+  color: white;
+}
+
 .donate-secure {
   text-align: center;
   font-size: 0.8rem;
@@ -3779,6 +3784,29 @@ img { max-width: 100%; }
   font-size: 0.72rem; color: rgba(255,255,255,0.7);
   margin-top: 0.1rem;
 }
+.avis-header-country {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+.avis-header-flag {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+.avis-header-flag-img {
+  width: 32px;
+  height: auto;
+  border-radius: 3px;
+  display: block;
+}
+.avis-header-country-name {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.85);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
 
 /* Body */
 .avis-body {
@@ -3923,7 +3951,7 @@ img { max-width: 100%; }
   font-weight: 700;
 }
 .avis-card[dir="rtl"] .avis-header {
-  flex-direction: row-reverse;
+  direction: ltr;
 }
 
 /* Footer */
