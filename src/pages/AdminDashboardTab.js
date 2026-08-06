@@ -319,6 +319,164 @@ function GlobalStatsCard({ globalStats }) {
   );
 }
 
+// ── Report HTML builder ────────────────────────────────────────────────────────
+function rEsc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function buildSeriesSvgReport(series, color) {
+  if (!series?.length) return '<p class="empty">Aucune donnée</p>';
+  const VW = 500, chartH = 130, padL = 36, padB = 36;
+  const VH = chartH + padB;
+  const chartW = VW - padL;
+  const max = Math.max(...series.map(s => s.value), 1);
+  const count = series.length;
+  const slotW = chartW / count;
+  const barW  = Math.max(5, slotW * 0.6);
+  const skipN = count > 20 ? Math.ceil(count / 8) : count > 12 ? 2 : 1;
+  const gridLines = [0, 0.5, 1].map(pct => {
+    const y = chartH - Math.round(pct * chartH);
+    return `<line x1="${padL}" y1="${y}" x2="${VW}" y2="${y}" stroke="#f3f4f6" stroke-width="1.5"/>
+            <text x="${padL-5}" y="${y+4}" text-anchor="end" font-size="12" fill="#d1d5db">${Math.round(pct*max)}</text>`;
+  }).join('');
+  const bars = series.map((s, i) => {
+    const bh  = Math.max(Math.round((s.value / max) * chartH), s.value > 0 ? 4 : 0);
+    const x   = padL + i * slotW + (slotW - barW) / 2;
+    const y   = chartH - bh;
+    const lbl = i % skipN === 0
+      ? `<text x="${x+barW/2}" y="${chartH+22}" text-anchor="middle" font-size="11" fill="#9ca3af">${rEsc(s.label)}</text>`
+      : '';
+    const val = s.value > 0
+      ? `<text x="${x+barW/2}" y="${y-6}" text-anchor="middle" font-size="12" fill="${color}" font-weight="700">${s.value}</text>`
+      : '';
+    return `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${color}" rx="3" opacity="0.9"/>${val}${lbl}`;
+  }).join('');
+  return `<svg viewBox="0 0 ${VW} ${VH}" width="100%" style="display:block;overflow:visible;margin:12px 0">
+    ${gridLines}
+    <line x1="${padL}" y1="0" x2="${padL}" y2="${chartH}" stroke="#e5e7eb" stroke-width="1.5"/>
+    <line x1="${padL}" y1="${chartH}" x2="${VW}" y2="${chartH}" stroke="#e5e7eb" stroke-width="1.5"/>
+    ${bars}</svg>`;
+}
+
+function hBarReport(label, count, maxCount, totalForPct, color) {
+  const pct    = maxCount > 0 ? (count / maxCount) * 100 : 0;
+  const pctStr = totalForPct > 0 ? ` (${Math.round((count/totalForPct)*100)}%)` : '';
+  return `<div class="bar-row">
+    <span class="bar-label">${rEsc(label)}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct, pct>0?1:0).toFixed(1)}%;background:${color}"></div></div>
+    <span class="bar-count">${count}<span class="bar-pct">${pctStr}</span></span>
+  </div>`;
+}
+
+function buildReportHtml({ decl, period, refDate, genreFilter, resolveCountry }) {
+  const DECL = '#10B981', GREEN = '#3A6B4A', GREY = '#94A3B8';
+  const BLUE = '#3B82F6', PINK = '#EC4899', AMBER = '#F59E0B';
+
+  function label() {
+    const d = refDate;
+    const SM = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+    const LM = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    if (period === 'jour') return `${d.getDate()} ${SM[d.getMonth()]} ${d.getFullYear()}`;
+    if (period === 'semaine') {
+      const dow = (d.getDay()+6)%7;
+      const s = new Date(d); s.setDate(d.getDate()-dow);
+      const e = new Date(s); e.setDate(s.getDate()+6);
+      return `Semaine du ${s.getDate()} ${SM[s.getMonth()]} au ${e.getDate()} ${SM[e.getMonth()]} ${e.getFullYear()}`;
+    }
+    if (period === 'mois') return `${LM[d.getMonth()]} ${d.getFullYear()}`;
+    return `Année ${d.getFullYear()}`;
+  }
+
+  const gTotal = decl ? decl.byGenre.homme + decl.byGenre.femme + decl.byGenre.enfant + (decl.byGenre.inconnu ?? 0) : 0;
+  const gMax   = Math.max(decl?.byGenre?.homme??0, decl?.byGenre?.femme??0, decl?.byGenre?.enfant??0, decl?.byGenre?.inconnu??0, 1);
+  const genreSection = decl ? `
+    <h2 class="section-title">Par genre</h2>
+    ${hBarReport('Homme',  decl.byGenre.homme,  gMax, gTotal, BLUE)}
+    ${hBarReport('Femme',  decl.byGenre.femme,  gMax, gTotal, PINK)}
+    ${hBarReport('Enfant', decl.byGenre.enfant, gMax, gTotal, AMBER)}
+    ${(decl.byGenre.inconnu??0)>0 ? hBarReport('Inconnu', decl.byGenre.inconnu, gMax, gTotal, GREY) : ''}` : '';
+
+  const paysMap = (decl?.byPays??[]).reduce((acc, p) => {
+    const name = resolveCountry ? (resolveCountry(p.pays)??p.pays) : p.pays;
+    acc[name] = (acc[name]??0) + p.count; return acc;
+  }, {});
+  const paysItems = Object.entries(paysMap).sort((a,b) => b[1]-a[1]);
+  if ((decl?.paysInconnu??0) > 0) paysItems.push(['Inconnu', decl.paysInconnu]);
+  const paysMax = paysItems.length ? Math.max(...paysItems.map(p=>p[1]),1) : 1;
+  const paysTotal = paysItems.reduce((s,p)=>s+p[1],0);
+  const paysSection = `
+    <h2 class="section-title">Par pays</h2>
+    ${paysItems.length
+      ? paysItems.map(([n,c]) => hBarReport(n, c, paysMax, paysTotal, n==='Inconnu'?GREY:DECL)).join('')
+      : '<p style="color:#d1d5db;font-size:12px;margin-bottom:8px">Aucune donnée</p>'}`;
+
+  const mosqueeItems = decl?.byMosquee??[];
+  const mosqueeMax   = mosqueeItems.length ? Math.max(...mosqueeItems.map(m=>m.count),1) : 1;
+  const mosqueeTotal = mosqueeItems.reduce((s,m)=>s+m.count,0);
+  const mosqueeSection = `
+    <h2 class="section-title">Par mosquée</h2>
+    ${mosqueeItems.length
+      ? mosqueeItems.map(m => hBarReport(m.nom, m.count, mosqueeMax, mosqueeTotal, GREEN)).join('')
+      : '<p style="color:#d1d5db;font-size:12px;margin-bottom:8px">Aucune donnée</p>'}`;
+
+  const now = new Date();
+  const SM2 = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+  const nowStr = `${now.getDate()} ${SM2[now.getMonth()]} ${now.getFullYear()} à ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const filterBadge = genreFilter ? `<span class="badge">${rEsc(genreFilter)}</span>` : '';
+  const total = decl?.total ?? 0;
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rapport Janazas — ${rEsc(label())}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,Helvetica,sans-serif; color:#1f2937; padding:32px 36px; max-width:680px; font-size:16px; line-height:1.5; }
+  .eyebrow { font-size:11px; font-weight:700; color:${DECL}; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:6px; }
+  h1 { font-size:26px; font-weight:800; color:#111827; margin-bottom:4px; }
+  .subtitle { font-size:15px; color:#6b7280; }
+  .meta { font-size:11px; color:#d1d5db; margin-top:2px; }
+  .divider { height:3px; background:linear-gradient(to right,${DECL},#e5e7eb); margin:16px 0 22px; border-radius:2px; }
+  .total-num { font-size:64px; font-weight:800; color:${DECL}; line-height:1; }
+  .total-lbl { font-size:17px; color:#9ca3af; margin-left:10px; }
+  .section-title { font-size:11px; font-weight:700; color:#6b7280; letter-spacing:0.1em; text-transform:uppercase; border-bottom:1px solid #f3f4f6; padding-bottom:8px; margin-top:26px; margin-bottom:14px; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:13px; }
+  .bar-label { flex:0 0 140px; font-size:14px; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-track { flex:1; height:18px; background:#f3f4f6; border-radius:9px; overflow:hidden; }
+  .bar-fill  { height:100%; border-radius:9px; }
+  .bar-count { flex:0 0 70px; font-size:14px; font-weight:700; color:#374151; text-align:right; }
+  .bar-pct   { font-size:12px; font-weight:400; color:#9ca3af; }
+  .badge { display:inline-block; background:#ecfdf5; color:#10b981; border:1px solid #6ee7b7; border-radius:4px; padding:1px 8px; font-size:12px; margin-left:8px; vertical-align:middle; }
+  .empty { color:#d1d5db; font-size:14px; margin-bottom:10px; }
+  .footer { margin-top:36px; padding-top:12px; border-top:1px solid #f3f4f6; font-size:11px; color:#d1d5db; text-align:center; }
+  @media print { body { padding:16px 20px; } .bar-label { flex:0 0 120px; } }
+</style>
+</head>
+<body>
+  <div class="eyebrow">Qabr · Rapport statistique</div>
+  <h1>Janazas déclarées</h1>
+  <div class="subtitle">${rEsc(label())}${filterBadge}</div>
+  <div class="meta">Généré le ${nowStr}</div>
+
+  <div class="divider"></div>
+
+  <div style="display:flex;align-items:baseline">
+    <span class="total-num">${total}</span>
+    <span class="total-lbl">janaza${total>1?'s':''} déclarée${total>1?'s':''}</span>
+  </div>
+
+  <h2 class="section-title">Évolution</h2>
+  ${buildSeriesSvgReport(decl?.series, DECL)}
+  ${genreSection}
+  ${paysSection}
+  ${mosqueeSection}
+
+  <div class="footer">Qabr · Application de notification Salat al-Janaza · salat-janaza.com</div>
+</body></html>`;
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const card = {
   background: '#ffffff',
@@ -342,6 +500,7 @@ export default function AdminDashboardTab() {
 
   const prieresCount   = useSelector(s => s.priereJanaza?.list?.length ?? 0);
   const prevPrieresRef = useRef(prieresCount);
+  const fetchStatsRef  = useRef(null);
 
   const navigate = useCallback((dir) => {
     setRefDate(prev => {
@@ -355,8 +514,8 @@ export default function AdminDashboardTab() {
     });
   }, [period]);
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
+  const fetchStats = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const dateStr          = refDate.toISOString().split('T')[0];
       const utcOffsetMinutes = -new Date().getTimezoneOffset();
@@ -372,11 +531,24 @@ export default function AdminDashboardTab() {
     } catch {
       // silent
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [period, refDate, genreFilter]);
 
+  // Always keep ref in sync so the interval never holds a stale closure
+  useEffect(() => { fetchStatsRef.current = fetchStats; }, [fetchStats]);
+
+  // Explicit fetch on filter/date/period change
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Clear stale data immediately so old period never bleeds into the new view
+  useEffect(() => { setStats(null); }, [period, refDate, genreFilter]);
+
+  // Silent auto-refresh every 30 s — no loading spinner, no stale-clear
+  useEffect(() => {
+    const id = setInterval(() => fetchStatsRef.current?.(true), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const toggleDonationButton = useCallback(async (value) => {
     dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: value } });
@@ -394,7 +566,7 @@ export default function AdminDashboardTab() {
   useEffect(() => {
     if (prevPrieresRef.current !== prieresCount) {
       prevPrieresRef.current = prieresCount;
-      fetchStats();
+      fetchStats(true); // silent — already handled by Redux state update
     }
   }, [prieresCount, fetchStats]);
 
@@ -403,6 +575,21 @@ export default function AdminDashboardTab() {
   const gTotal = decl
     ? decl.byGenre.homme + decl.byGenre.femme + decl.byGenre.enfant + decl.byGenre.inconnu
     : 0;
+
+  const handleExport = useCallback(() => {
+    if (!decl) return;
+    const resolveCountry = (code) => {
+      if (!code || code.length !== 2) return code;
+      try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(code.toUpperCase()) ?? code; }
+      catch { return code; }
+    };
+    const html = buildReportHtml({ decl, period, refDate, genreFilter, resolveCountry });
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { try { win.print(); } catch {} };
+  }, [decl, period, refDate, genreFilter]);
 
   return (
     <div>
@@ -503,6 +690,30 @@ export default function AdminDashboardTab() {
             >{g.label}</button>
           ))}
         </div>
+
+        {/* Export button */}
+        <div className="dash-ctrl-group" style={{ marginLeft: 'auto' }}>
+          <button
+            onClick={handleExport}
+            disabled={!decl}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 8,
+              border: '1.5px solid #d1d5db',
+              background: decl ? '#fff' : '#f9fafb',
+              color: decl ? '#374151' : '#d1d5db',
+              fontSize: 13, fontWeight: 600, cursor: decl ? 'pointer' : 'default',
+              transition: 'all 0.15s',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Exporter PDF
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -532,14 +743,36 @@ export default function AdminDashboardTab() {
               </SectionCard>
             )}
 
-            {decl?.byPays?.length > 0 && (
-              <SectionCard title="Par pays">
-                {decl.byPays.map((item, i) => (
-                  <ProgressRow key={i} label={item.pays} count={item.count}
-                    total={decl.byPays[0].count} color={DECL_COLOR} />
-                ))}
-              </SectionCard>
-            )}
+            {(decl?.byPays?.length > 0 || (decl?.paysInconnu ?? 0) > 0) && (() => {
+              const resolvePays = (p) => {
+                if (!p || p.length !== 2) return p;
+                try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(p.toUpperCase()) ?? p; }
+                catch { return p; }
+              };
+              const merged = Object.values(
+                (decl.byPays ?? [])
+                  .map(item => ({ ...item, pays: resolvePays(item.pays) }))
+                  .reduce((acc, item) => {
+                    if (acc[item.pays]) acc[item.pays].count += item.count;
+                    else acc[item.pays] = { ...item };
+                    return acc;
+                  }, {})
+              ).sort((a, b) => b.count - a.count);
+              const inconnu = decl.paysInconnu ?? 0;
+              const maxCount = Math.max(merged[0]?.count ?? 0, inconnu, 1);
+              return (
+                <SectionCard title="Par pays">
+                  {merged.map((item, i) => (
+                    <ProgressRow key={i} label={item.pays} count={item.count}
+                      total={maxCount} color={DECL_COLOR} />
+                  ))}
+                  {inconnu > 0 && (
+                    <ProgressRow label="Non renseigné" count={inconnu}
+                      total={maxCount} color="#9ca3af" dot />
+                  )}
+                </SectionCard>
+              );
+            })()}
 
             {decl?.byMosquee?.length > 0 && (
               <SectionCard title="Par mosquée">

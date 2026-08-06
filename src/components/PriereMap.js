@@ -22,11 +22,11 @@ const STATUT_CLS   = { AVenir: 'avenir',  EnCours: 'encours',  Terminee: 'termin
 
 const PREVIEW_LANGS = [
   { code: 'fr', flag: 'fr' }, { code: 'en', flag: 'gb' }, { code: 'ar', flag: 'sa' },
-  { code: 'tr', flag: 'tr' }, { code: 'de', flag: 'de' }, { code: 'es', flag: 'es' },
-  { code: 'it', flag: 'it' }, { code: 'pt', flag: 'pt' }, { code: 'ru', flag: 'ru' },
-  { code: 'ja', flag: 'jp' }, { code: 'ko', flag: 'kr' }, { code: 'ms', flag: 'my' },
-  { code: 'id', flag: 'id' }, { code: 'ur', flag: 'pk' }, { code: 'bn', flag: 'bd' },
-  { code: 'bm', flag: 'ml' },
+  { code: 'bm', flag: 'ml' }, { code: 'nl', flag: 'be' }, { code: 'tr', flag: 'tr' },
+  { code: 'de', flag: 'de' }, { code: 'es', flag: 'es' }, { code: 'it', flag: 'it' },
+  { code: 'pt', flag: 'pt' }, { code: 'ru', flag: 'ru' }, { code: 'ja', flag: 'jp' },
+  { code: 'ko', flag: 'kr' }, { code: 'ms', flag: 'my' }, { code: 'id', flag: 'id' },
+  { code: 'ur', flag: 'pk' }, { code: 'bn', flag: 'bd' },
 ];
 
 

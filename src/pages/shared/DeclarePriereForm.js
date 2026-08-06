@@ -1002,10 +1002,12 @@ export default function DeclarePriereForm() {
               </div>
             )}
 
-            <div style={{ marginTop: '0.75rem' }}>
-              <label className="df-label">{t('declare.city_label')} <span className="df-opt">({t('declare.city_optional')})</span></label>
-              <input className="df-input" type="text" value={form.villeEnterrement} onChange={set('villeEnterrement')} placeholder={t('declare.city_placeholder')} />
-            </div>
+            {form.countryKnown && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <label className="df-label">{t('declare.city_label')} <span className="df-opt">({t('declare.city_optional')})</span></label>
+                <input className="df-input" type="text" value={form.villeEnterrement} onChange={set('villeEnterrement')} placeholder={t('declare.city_placeholder')} />
+              </div>
+            )}
 
             <button type="button" className="btn-preview-avis" onClick={() => setShowPreview(true)} disabled={!canPreview}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

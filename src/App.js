@@ -22,6 +22,7 @@ import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import DonatePage from './pages/DonatePage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID ?? '';
 
@@ -96,6 +97,7 @@ function AppRoutes() {
               </AdminRoute>
             }
           />
+          <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
         <Footer />

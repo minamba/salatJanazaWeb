@@ -1873,6 +1873,35 @@ img { max-width: 100%; }
   max-width: 320px;
 }
 
+/* Filtres de lieu et tri, juste sous la barre de recherche.
+   `flex-wrap` parce que trois listes déroulantes côte à côte débordent dès que
+   l'écran se rétrécit ou qu'une ville porte un nom long. */
+.admin-filtres-lieu {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.admin-select {
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid var(--green-border);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, inherit);
+  font-size: 0.85rem;
+  /* Une largeur minimale, pas fixe : le libellé passe de « Toutes les villes »
+     au nom choisi, et le contrôle ne doit pas sauter de taille. */
+  min-width: 170px;
+  max-width: 260px;
+  cursor: pointer;
+}
+
+.admin-select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 .admin-search svg {
   position: absolute;
   left: 0.75rem;

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMosquees, deleteMosquee, createMosquee, updateMosquee, fetchPendingMosquees, validerMosquee as validerMosqueeReq, refuserMosquee as refuserMosqueeReq } from '../lib/actions/mosqueeActions';
 import { fetchPrieres, deletePriere, updatePriere, fetchPrieresEnAttente } from '../lib/actions/priereJanazaActions';
-import { searchMosquees } from '../lib/api/mosqueeApi';
+import { searchMosquees, rattraperLieux, getEtatLieux } from '../lib/api/mosqueeApi';
 import {
   fetchUtilisateurs,
   createUtilisateur,
@@ -28,6 +28,83 @@ function Modal({ title, onClose, children }) {
     </div>
   );
 }
+
+const TOUS = '__tous__';
+
+/**
+ * Ville et pays d'une mosquée, plus le tri par date.
+ *
+ * Sur le web on utilise un <select> natif, pas la feuille modale du mobile :
+ * le navigateur donne gratuitement la navigation au clavier, la recherche par
+ * frappe et l'accessibilité, qu'il aurait fallu réécrire à la main.
+ */
+function FiltresLieu({ villes, pays, ville, setVille, paysSel, setPays, tri, setTri }) {
+  const actif = { borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 600 };
+
+  return (
+    <div className="admin-filtres-lieu">
+      <select
+        className="admin-select"
+        style={ville !== TOUS ? actif : undefined}
+        value={ville}
+        onChange={(e) => setVille(e.target.value)}
+        aria-label="Filtrer par ville"
+      >
+        <option value={TOUS}>Toutes les villes</option>
+        {villes.map((v) => <option key={v} value={v}>{v}</option>)}
+      </select>
+
+      <select
+        className="admin-select"
+        style={paysSel !== TOUS ? actif : undefined}
+        value={paysSel}
+        onChange={(e) => setPays(e.target.value)}
+        aria-label="Filtrer par pays"
+      >
+        <option value={TOUS}>Tous les pays</option>
+        {pays.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+
+      <select
+        className="admin-select"
+        value={tri}
+        onChange={(e) => setTri(e.target.value)}
+        aria-label="Trier par date"
+      >
+        <option value="recent">Plus récentes d'abord</option>
+        <option value="ancien">Plus anciennes d'abord</option>
+      </select>
+    </div>
+  );
+}
+
+/** Les valeurs distinctes d'un champ, triées, en ignorant les vides. */
+function listerLieux(liste, champ, pays) {
+  const vues = new Set();
+  for (const m of liste ?? []) {
+    // Les villes proposées se restreignent au pays choisi : proposer Montréal
+    // quand « France » est sélectionné offrirait un filtre qui ne rend rien.
+    if (pays && pays !== TOUS && m.pays !== pays) continue;
+    if (m[champ]) vues.add(m[champ]);
+  }
+  return [...vues].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+/**
+ * Une mosquée sans ville reste visible tant qu'aucun filtre n'est posé : le
+ * géocodage ne connaît pas tous les points, et elle ne doit pas disparaître de
+ * l'administration sans explication.
+ */
+const correspondLieu = (m, ville, pays) =>
+  (ville === TOUS || m.ville === ville) &&
+  (pays === TOUS || m.pays === pays);
+
+/** Tri par date sur une COPIE — trier la source réordonnerait les autres vues. */
+const parDate = (liste, champ, sens) =>
+  [...(liste ?? [])].sort((a, b) => {
+    const da = new Date(a[champ] ?? 0), db = new Date(b[champ] ?? 0);
+    return sens === 'recent' ? db - da : da - db;
+  });
 
 // ─── Search bar ───────────────────────────────────────────────────────────────
 function SearchBar({ value, onChange, placeholder }) {
@@ -183,9 +260,6 @@ export default function AdminPage() {
   const [importTxtContent, setImportTxtContent] = useState('');
   const [importTxtLoading, setImportTxtLoading] = useState(false);
   const [importTxtResult, setImportTxtResult] = useState(null);
-  const [donationButtonVisible, setDonationButtonVisible] = useState(true);
-  const [featureLoading, setFeatureLoading] = useState(false);
-
   // ── Toast notification ────────────────────────────────────────────────────────
   const [notif, setNotif] = useState(null);
   const notifTimer = useRef(null);
@@ -202,6 +276,33 @@ export default function AdminPage() {
   const [searchPriereCreationDate, setSearchPriereCreationDate] = useState('');
   const [searchMosquee, setSearchMosquee] = useState('');
   const [searchUser, setSearchUser] = useState('');
+  const [searchHistoPriere, setSearchHistoPriere] = useState('');
+  const [histoPrieres, setHistoPrieres] = useState([]);
+  const [histoLoading, setHistoLoading] = useState(false);
+
+  // ── Filtres de lieu et tri ───────────────────────────────────────────────────
+  // Ville et pays sont des colonnes de la base, renseignées par géocodage
+  // inverse des coordonnées — pas une lecture de l'adresse, qui est du texte
+  // libre où plusieurs formats incompatibles cohabitent.
+  const [filtreVille, setFiltreVille] = useState(TOUS);
+  const [filtrePays, setFiltrePays] = useState(TOUS);
+  const [triMosquee, setTriMosquee] = useState('recent');
+  const [triUser, setTriUser] = useState('recent');
+  const [rattrapageLoading, setRattrapageLoading] = useState(false);
+  const [rattrapageInfo, setRattrapageInfo] = useState(null);
+
+  const loadHistoPrieres = useCallback(async () => {
+    setHistoLoading(true);
+    try {
+      const res = await apiClient.get('/api/PriereJanaza/historique');
+      setHistoPrieres(res.data ?? []);
+    } catch {}
+    finally { setHistoLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (prieresSubTab === 'historique') loadHistoPrieres();
+  }, [prieresSubTab, loadHistoPrieres]);
 
   // ── Mosque form ─────────────────────────────────────────────────────────────
   const [mosqueeForm, setMosqueeForm] = useState({ nom: '', adresse: '' });
@@ -243,9 +344,6 @@ export default function AdminPage() {
     dispatch(fetchMosquees());
     dispatch(fetchPrieres());
     dispatch(fetchUtilisateurs());
-    apiClient.get('/api/features')
-      .then(res => setDonationButtonVisible(res.data.donationButtonVisible))
-      .catch(() => {});
   }, [dispatch]);
 
   useEffect(() => {
@@ -261,19 +359,6 @@ export default function AdminPage() {
     }
   }, [tab, prieresSubTab, dispatch]);
 
-  const toggleDonationButton = useCallback(async (value) => {
-    setFeatureLoading(true);
-    try {
-      const res = await apiClient.put('/api/features/donation-button', { visible: value });
-      setDonationButtonVisible(res.data.donationButtonVisible);
-      showNotif(`Bouton "Nous soutenir" ${res.data.donationButtonVisible ? 'activé' : 'désactivé'}`);
-    } catch {
-      showNotif('Erreur lors de la mise à jour', 'error');
-    } finally {
-      setFeatureLoading(false);
-    }
-  }, [showNotif]);
-
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const getDeclarantName = useCallback((utilisateurId) => {
     if (!utilisateurId) return '—';
@@ -282,9 +367,15 @@ export default function AdminPage() {
     return `${u.prenom ?? ''} ${u.nom ?? ''}`.trim() || `#${utilisateurId}`;
   }, [utilisateurs]);
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' }) : '—';
-  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '—';
+  const parseUtcDate = (d) => d ? new Date(/Z$|[+-]\d{2}:/.test(d) ? d : d + 'Z') : null;
+  const fmtDate = (d) => parseUtcDate(d)?.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) ?? '—';
+  const fmtDateOnly = (d) => parseUtcDate(d)?.toLocaleDateString('fr-FR') ?? '—';
   const toLocalISODate = (d) => d.toISOString().slice(0, 10);
+  const resolvePays = (pays) => {
+    if (!pays || pays.length !== 2) return pays ?? '—';
+    try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(pays.toUpperCase()) ?? pays; }
+    catch { return pays; }
+  };
 
   // ── Filtered lists ───────────────────────────────────────────────────────────
   const filteredPrieres = useMemo(() => {
@@ -318,23 +409,60 @@ export default function AdminPage() {
     }).sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation));
   }, [prieres, searchPriereText, searchPriereMosquee, searchPriereDate, searchPriereCreationDate, filterDateFrom, filterDateTo, getDeclarantName]);
 
-  const filteredMosquees = useMemo(() => {
-    if (!searchMosquee) return mosquees;
-    const q = normalize(searchMosquee);
-    return mosquees.filter((m) =>
-      normalize(m.nom).includes(q) || normalize(m.adresse).includes(q)
+  const filteredHistoPrieres = useMemo(() => {
+    if (!searchHistoPriere) return histoPrieres;
+    const qh = normalize(searchHistoPriere);
+    return histoPrieres.filter(h =>
+      normalize(h.estAnonyme ? 'anonyme' : h.nomDefunt).includes(qh) ||
+      normalize(h.mosqueeNom ?? '').includes(qh) ||
+      normalize(`${h.declarantPrenom ?? ''} ${h.declarantNom ?? ''}`).includes(qh)
     );
-  }, [mosquees, searchMosquee]);
+  }, [histoPrieres, searchHistoPriere]);
+
+  // Les deux sous-onglets « enregistrées » et « en attente » partagent le même
+  // filtre : les options doivent donc venir des DEUX listes, sinon une ville
+  // présente uniquement parmi les demandes en attente serait introuvable dans
+  // la liste déroulante du sous-onglet qui l'affiche.
+  const toutesMosquees = useMemo(
+    () => [...(mosquees ?? []), ...(pendingMosquees ?? [])],
+    [mosquees, pendingMosquees]
+  );
+  const villesOptions = useMemo(
+    () => listerLieux(toutesMosquees, 'ville', filtrePays), [toutesMosquees, filtrePays]);
+  const paysOptions = useMemo(
+    () => listerLieux(toutesMosquees, 'pays', null), [toutesMosquees]);
+
+  const filteredMosquees = useMemo(() => {
+    const q = normalize(searchMosquee);
+    return parDate(
+      (mosquees ?? []).filter((m) =>
+        (!searchMosquee || normalize(m.nom).includes(q) || normalize(m.adresse).includes(q))
+        && correspondLieu(m, filtreVille, filtrePays)
+      ),
+      'dateCreation', triMosquee
+    );
+  }, [mosquees, searchMosquee, filtreVille, filtrePays, triMosquee]);
+
+  const filteredPendingMosquees = useMemo(
+    () => parDate(
+      (pendingMosquees ?? []).filter((m) => correspondLieu(m, filtreVille, filtrePays)),
+      'dateCreation', triMosquee
+    ),
+    [pendingMosquees, filtreVille, filtrePays, triMosquee]
+  );
 
   const filteredUsers = useMemo(() => {
-    if (!searchUser) return utilisateurs;
     const q = normalize(searchUser);
-    return utilisateurs.filter((u) =>
-      normalize(u.prenom).includes(q) ||
-      normalize(u.nom).includes(q) ||
-      normalize(u.email).includes(q)
+    return parDate(
+      (utilisateurs ?? []).filter((u) =>
+        !searchUser ||
+        normalize(u.prenom).includes(q) ||
+        normalize(u.nom).includes(q) ||
+        normalize(u.email).includes(q)
+      ),
+      'dateInscription', triUser
     );
-  }, [utilisateurs, searchUser]);
+  }, [utilisateurs, searchUser, triUser]);
 
   const baseImportUsers = importPermUsers ?? utilisateurs ?? [];
   const filteredImportPermUsers = useMemo(() => {
@@ -503,10 +631,12 @@ export default function AdminPage() {
   };
 
   const toggleSelectAllPending = () => {
-    if (selectedPending.size === pendingMosquees.length && pendingMosquees.length > 0) {
+    // Même règle que pour les actions groupées : « tout sélectionner » ne
+    // sélectionne que ce qui est visible.
+    if (selectedPending.size === filteredPendingMosquees.length && filteredPendingMosquees.length > 0) {
       setSelectedPending(new Set());
     } else {
-      setSelectedPending(new Set(pendingMosquees.map((m) => m.id)));
+      setSelectedPending(new Set(filteredPendingMosquees.map((m) => m.id)));
     }
   };
 
@@ -542,22 +672,36 @@ export default function AdminPage() {
     showNotif(`Les ${count} mosquées sélectionnées ont été refusées et supprimées.`, 'error');
   };
 
+  // « Tout » veut dire tout CE QUI EST AFFICHÉ, jamais toute la base.
+  //
+  // Depuis l'arrivée des filtres de ville et de pays, la liste montrée n'est
+  // plus forcément la liste entière. Agir sur `pendingMosquees` ferait qu'un
+  // clic sur « Tout refuser », après avoir filtré sur une ville, supprimerait
+  // aussi les demandes des autres villes — sans que rien à l'écran ne l'ait
+  // laissé prévoir. Le libellé de confirmation rappelle donc le filtre actif.
+  const filtreActif = filtreVille !== TOUS || filtrePays !== TOUS;
+  const mentionFiltre = filtreActif
+    ? ` (filtre actif : ${[filtreVille, filtrePays].filter((v) => v !== TOUS).join(', ')})`
+    : '';
+
   const handleValiderTous = () => {
-    if (!pendingMosquees.length) return;
-    const count = pendingMosquees.length;
-    if (!window.confirm(`Valider toutes les ${count} mosquée(s) en attente ?`)) return;
-    pendingMosquees.forEach((m) => dispatch(validerMosqueeReq(m.id)));
+    const cible = filteredPendingMosquees;
+    if (!cible.length) return;
+    const count = cible.length;
+    if (!window.confirm(`Valider les ${count} mosquée(s) en attente affichées${mentionFiltre} ?`)) return;
+    cible.forEach((m) => dispatch(validerMosqueeReq(m.id)));
     setSelectedPending(new Set());
-    showNotif(`✓ Toutes les ${count} mosquées en attente ont été validées avec succès.`);
+    showNotif(`✓ ${count} mosquée(s) en attente validée(s) avec succès.`);
   };
 
   const handleRefuserTous = () => {
-    if (!pendingMosquees.length) return;
-    const count = pendingMosquees.length;
-    if (!window.confirm(`Refuser et supprimer toutes les ${count} mosquée(s) en attente ?`)) return;
-    pendingMosquees.forEach((m) => dispatch(refuserMosqueeReq(m.id)));
+    const cible = filteredPendingMosquees;
+    if (!cible.length) return;
+    const count = cible.length;
+    if (!window.confirm(`Refuser et supprimer les ${count} mosquée(s) en attente affichées${mentionFiltre} ?`)) return;
+    cible.forEach((m) => dispatch(refuserMosqueeReq(m.id)));
     setSelectedPending(new Set());
-    showNotif(`Toutes les ${count} mosquées en attente ont été refusées et supprimées.`, 'error');
+    showNotif(`${count} mosquée(s) en attente refusée(s) et supprimée(s).`, 'error');
   };
 
   // ── Import permission handlers ────────────────────────────────────────────────
@@ -658,6 +802,78 @@ export default function AdminPage() {
     }
   };
 
+  /**
+   * Renseigne ville et pays par géocodage inverse des coordonnées.
+   *
+   * On enchaîne des lots plutôt qu'un seul appel : le service de
+   * géolocalisation n'accepte qu'une requête par seconde, donc quelques
+   * centaines de mosquées dépassent largement le délai d'attente d'une requête
+   * HTTP. La boucle s'arrête quand il ne reste rien — ou quand un lot ne
+   * résout plus rien, ce qui signifie que les mosquées restantes sont
+   * introuvables et qu'insister tournerait sans fin.
+   */
+  const handleRattrapageLieux = async () => {
+    setRattrapageLoading(true);
+    setRattrapageInfo(null);
+    try {
+      await rattraperLieux();
+    } catch (e) {
+      // Nommer la cause : « interrompu » tout court laisse chercher au hasard
+      // entre un serveur pas à jour, une panne réseau et un délai dépassé.
+      const statut = e?.response?.status;
+      const cause =
+        e?.code === 'ECONNABORTED' ? 'Délai d’attente dépassé.'
+        : statut === 404 ? "Fonction absente du serveur : l'API n'est pas encore à jour."
+        : statut ? `Le serveur a répondu ${statut}.`
+        : 'Serveur injoignable.';
+
+      setRattrapageInfo({ erreur: true, message: cause });
+      showNotif('Localisation impossible.', 'error');
+      setRattrapageLoading(false);
+    }
+  };
+
+  // Le suivi du rattrapage : tant qu'il tourne sur le serveur, on demande
+  // l'avancement toutes les cinq secondes. Quitter la page n'arrête que la
+  // surveillance — jamais le travail.
+  useEffect(() => {
+    if (!rattrapageLoading) return undefined;
+
+    let vivant = true;
+    let minuteur;
+
+    const interroger = async () => {
+      try {
+        const { data } = await getEtatLieux();
+        if (!vivant) return;
+        setRattrapageInfo({
+          message: `Localisation en cours — ${data.traitees ?? 0} sur ${data.total ?? 0}…`,
+        });
+
+        if (data.enCours) {
+          minuteur = setTimeout(interroger, 5000);
+          return;
+        }
+
+        setRattrapageLoading(false);
+        dispatch(fetchMosquees());
+        setRattrapageInfo({
+          message: `${data.traitees ?? 0} mosquée(s) localisée(s).` + (data.restantes > 0
+            ? ` ${data.restantes} sans résultat : le service ne reconnaît pas leurs coordonnées. Elles restent visibles et seront retentées.`
+            : ''),
+        });
+        showNotif(`${data.traitees ?? 0} mosquée(s) localisée(s).`);
+      } catch {
+        // Une interrogation ratée n'est pas un échec du traitement : le
+        // serveur continue. On réessaiera au prochain tour.
+        if (vivant) minuteur = setTimeout(interroger, 5000);
+      }
+    };
+
+    interroger();
+    return () => { vivant = false; clearTimeout(minuteur); };
+  }, [rattrapageLoading, dispatch, showNotif]);
+
   const handleNormaliserSansNom = async () => {
     if (!window.confirm('Renommer toutes les mosquées avec un nom générique ("Mosquée", "mosquee", etc.) d\'après leur ville, et supprimer celles sans adresse valide ?')) return;
     setNormLoading(true);
@@ -701,9 +917,6 @@ export default function AdminPage() {
           <button className={`btn ${tab === 'dashboard' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('dashboard')}>
             Dashboard
           </button>
-          <button className={`btn ${tab === 'parametres' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('parametres')}>
-            Paramètres
-          </button>
         </div>
 
         {/* ── PRIERES ── */}
@@ -727,6 +940,12 @@ export default function AdminPage() {
                 onClick={() => { setPrieresSubTab('importtxt'); setImportTxtResult(null); }}
               >
                 ☁ Import TXT
+              </button>
+              <button
+                className={`btn ${prieresSubTab === 'historique' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => { setPrieresSubTab('historique'); setSearchHistoPriere(''); }}
+              >
+                🕐 Historique
               </button>
             </div>
 
@@ -948,6 +1167,71 @@ export default function AdminPage() {
             </div>
           )}
 
+          {prieresSubTab === 'historique' && (
+            <div className="admin-table-wrap">
+              <h2>Historique des prières</h2>
+              <div className="admin-filters">
+                <div className="admin-search-bar">
+                  <SearchBar value={searchHistoPriere} onChange={setSearchHistoPriere} placeholder="Nom du défunt, mosquée ou déclarant…" />
+                </div>
+              </div>
+              <p className="admin-count">
+                {filteredHistoPrieres.length} résultat{filteredHistoPrieres.length !== 1 ? 's' : ''}
+              </p>
+              {histoLoading && <p className="text-muted">Chargement...</p>}
+              <div className="admin-table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Défunt</th>
+                      <th>Genre</th>
+                      <th>Mosquée</th>
+                      <th>Pays</th>
+                      <th>Déclarant</th>
+                      <th>Déclaré le</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistoPrieres.map((h) => (
+                      <tr key={h.id}>
+                        <td>{h.id}</td>
+                        <td>{h.estAnonyme ? <em>Anonyme</em> : (formatNomDefunt(h.nomDefunt) || '—')}</td>
+                        <td>{h.genre ?? '—'}</td>
+                        <td>{h.mosqueeNom ?? '—'}</td>
+                        <td>{resolvePays(h.pays)}</td>
+                        <td>{`${h.declarantPrenom ?? ''} ${h.declarantNom ?? ''}`.trim() || '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{fmtDateOnly(h.dateCreation)}</td>
+                        <td className="admin-actions">
+                          <button
+                            className="btn-icon btn-icon-delete"
+                            title="Supprimer"
+                            onClick={async () => {
+                              if (!window.confirm('Supprimer cette entrée de l\'historique ?')) return;
+                              try {
+                                await apiClient.delete(`/api/PriereJanaza/historique/${h.id}`);
+                                setHistoPrieres(p => p.filter(x => x.id !== h.id));
+                              } catch { alert('Erreur lors de la suppression.'); }
+                            }}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!histoLoading && filteredHistoPrieres.length === 0 && (
+                      <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucun historique</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {prieresSubTab === 'enattente' && (
             <div className="admin-table-wrap">
               <h2>Prières en attente de validation du lieu</h2>
@@ -1055,6 +1339,27 @@ export default function AdminPage() {
                   >
                     {normLoading ? 'Normalisation…' : 'Normaliser mosquées sans nom'}
                   </button>
+                  {' '}
+                  {/* Renseigne ville et pays par géocodage inverse des
+                      coordonnées. À relancer après un import : seules les
+                      mosquées sans ville sont traitées. */}
+                  <button
+                    className="btn btn-outline"
+                    onClick={handleRattrapageLieux}
+                    disabled={rattrapageLoading}
+                    style={{ fontSize: '0.85rem' }}
+                    title="Renseigne la ville et le pays de chaque mosquée à partir de ses coordonnées"
+                  >
+                    {rattrapageLoading ? 'Localisation en cours…' : 'Localiser les mosquées (ville / pays)'}
+                  </button>
+                  {rattrapageInfo && (
+                    <div
+                      className={`alert ${rattrapageInfo.erreur ? 'alert-error' : 'alert-success'}`}
+                      style={{ marginTop: '0.5rem', fontSize: '0.82rem' }}
+                    >
+                      {rattrapageInfo.message}
+                    </div>
+                  )}
                   {normResult && (
                     <div className="alert alert-success" style={{ marginTop: '0.5rem', fontSize: '0.82rem' }}>
                       <strong>Renommées ({normResult.renommes?.length ?? 0}) :</strong>{' '}
@@ -1072,6 +1377,13 @@ export default function AdminPage() {
                     placeholder="Rechercher par nom ou adresse…"
                   />
                 </div>
+
+                <FiltresLieu
+                  villes={villesOptions} pays={paysOptions}
+                  ville={filtreVille} setVille={setFiltreVille}
+                  paysSel={filtrePays} setPays={setFiltrePays}
+                  tri={triMosquee} setTri={setTriMosquee}
+                />
 
                 <p className="admin-count">
                   {filteredMosquees.length} résultat{filteredMosquees.length !== 1 ? 's' : ''}
@@ -1134,17 +1446,25 @@ export default function AdminPage() {
                         </button>
                       </>
                     )}
-                    <button className="btn btn-outline btn-sm" onClick={handleValiderTous} disabled={!pendingMosquees.length}>
+                    <button className="btn btn-outline btn-sm" onClick={handleValiderTous} disabled={!filteredPendingMosquees.length}>
                       Tout accepter
                     </button>
-                    <button className="btn btn-danger-sm" onClick={handleRefuserTous} disabled={!pendingMosquees.length}>
+                    <button className="btn btn-danger-sm" onClick={handleRefuserTous} disabled={!filteredPendingMosquees.length}>
                       Tout refuser
                     </button>
                   </div>
                 </div>
 
+                <FiltresLieu
+                  villes={villesOptions} pays={paysOptions}
+                  ville={filtreVille} setVille={setFiltreVille}
+                  paysSel={filtrePays} setPays={setFiltrePays}
+                  tri={triMosquee} setTri={setTriMosquee}
+                />
+
                 <p className="admin-count">
-                  {pendingMosquees.length} demande{pendingMosquees.length !== 1 ? 's' : ''} en attente
+                  {filteredPendingMosquees.length} demande{filteredPendingMosquees.length !== 1 ? 's' : ''} en attente
+                  {filteredPendingMosquees.length !== pendingMosquees.length && ` sur ${pendingMosquees.length}`}
                 </p>
 
                 {mPendingLoading && <p className="text-muted">Chargement...</p>}
@@ -1155,7 +1475,7 @@ export default function AdminPage() {
                         <th>
                           <input
                             type="checkbox"
-                            checked={selectedPending.size === pendingMosquees.length && pendingMosquees.length > 0}
+                            checked={selectedPending.size === filteredPendingMosquees.length && filteredPendingMosquees.length > 0}
                             onChange={toggleSelectAllPending}
                           />
                         </th>
@@ -1169,7 +1489,7 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pendingMosquees.map((m) => (
+                      {filteredPendingMosquees.map((m) => (
                         <tr key={m.id} style={selectedPending.has(m.id) ? { background: 'var(--bg-selected, #e8f4fd)' } : {}}>
                           <td>
                             <input
@@ -1194,8 +1514,12 @@ export default function AdminPage() {
                           </td>
                         </tr>
                       ))}
-                      {!mPendingLoading && pendingMosquees.length === 0 && (
-                        <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>Aucune demande en attente</td></tr>
+                      {!mPendingLoading && filteredPendingMosquees.length === 0 && (
+                        <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                          {/* Un filtre actif vide la liste sans que la base le soit :
+                              dire « aucune demande » induirait en erreur. */}
+                          {filtreActif ? 'Aucune demande ne correspond à ces filtres' : 'Aucune demande en attente'}
+                        </td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1221,6 +1545,20 @@ export default function AdminPage() {
                 onChange={setSearchUser}
                 placeholder="Rechercher par prénom, nom ou email…"
               />
+            </div>
+
+            {/* Ni ville ni pays ici : un compte n'a pas de lieu. Seul le tri
+                par date d'inscription a un sens. */}
+            <div className="admin-filtres-lieu">
+              <select
+                className="admin-select"
+                value={triUser}
+                onChange={(e) => setTriUser(e.target.value)}
+                aria-label="Trier par date d'inscription"
+              >
+                <option value="recent">Inscrits les plus récents</option>
+                <option value="ancien">Inscrits les plus anciens</option>
+              </select>
             </div>
 
             <p className="admin-count">
@@ -1354,31 +1692,6 @@ export default function AdminPage() {
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && <AdminDashboardTab />}
 
-        {tab === 'parametres' && (
-          <div style={{ maxWidth: 520, margin: '0 auto' }}>
-            <div className="admin-table-wrap" style={{ padding: '1.5rem' }}>
-              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1rem', fontWeight: 700 }}>
-                Fonctionnalités de l'application
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Bouton "Nous soutenir"</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 3 }}>Affiché sur mobile et web</div>
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: featureLoading ? 'wait' : 'pointer' }}>
-                  {featureLoading && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sauvegarde…</span>}
-                  <input
-                    type="checkbox"
-                    checked={donationButtonVisible}
-                    disabled={featureLoading}
-                    onChange={(e) => toggleDonationButton(e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── MODAL: Edit Mosquée ── */}
