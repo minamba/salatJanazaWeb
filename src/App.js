@@ -7,7 +7,7 @@ import { refreshUserProfile } from './lib/actions/authActions';
 import { apiClient } from './lib/api/axiosConfig';
 import './App.css';
 
-import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast } from './components';
+import { Navbar, Footer, TopBanner, PrivateRoute, AdminRoute, JanazaToast, InfoBanner } from './components';
 import DeclareChoiceModal from './components/DeclareChoiceModal';
 import { DeclareModalProvider } from './context/DeclareModalContext';
 import LandingPage from './pages/LandingPage';
@@ -43,9 +43,25 @@ function AppRoutes() {
   // Les prières disparaissent naturellement à la prochaine réponse du poll (≤30s).
 
   useEffect(() => {
-    apiClient.get('/api/features')
-      .then(res => dispatch({ type: 'FEATURES_LOADED', payload: { donationButtonVisible: res.data.donationButtonVisible ?? true } }))
-      .catch(() => {});
+    const applyFeatures = (data) => dispatch({ type: 'FEATURES_LOADED', payload: {
+      donationButtonVisible: data.donationButtonVisible ?? true,
+      infoMessage: data.infoMessage ?? null,
+    }});
+
+    apiClient.get('/api/features').then(res => applyFeatures(res.data)).catch(() => {});
+
+    const apiBase = process.env.REACT_APP_API_URL || window.location.origin;
+    const wsUrl = apiBase.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/api/features/ws';
+    let ws, reconnectTimer, unmounted = false;
+    const connect = () => {
+      if (unmounted) return;
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (e) => { try { applyFeatures(JSON.parse(e.data)); } catch {} };
+      ws.onerror = () => {};
+      ws.onclose = () => { if (!unmounted) reconnectTimer = setTimeout(connect, 5000); };
+    };
+    connect();
+    return () => { unmounted = true; clearTimeout(reconnectTimer); ws?.close(); };
   }, [dispatch]);
 
   // Rafraîchit canImportFlyer dès que l'onglet redevient visible ou toutes les 3 minutes
@@ -67,6 +83,7 @@ function AppRoutes() {
         <div className="sticky-header">
           <TopBanner />
           <Navbar />
+          <InfoBanner />
         </div>
         <JanazaToast />
         <main className="main-content">

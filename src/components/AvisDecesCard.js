@@ -117,8 +117,7 @@ const AvisDecesCard = forwardRef(({ data, previewLang, showCommentaire = true, m
       <div className="avis-header">
         <img src={mosqueeImg} alt="" className="avis-header-icon" />
         <div style={{ flex: 1 }}>
-          <div className="avis-header-title">Salat al-Janaza</div>
-          <div className="avis-header-sub">{t('avis.subtitle')}</div>
+          <div className="avis-header-title">Salat Janaza</div>
         </div>
         {mosqueeIsoCode && (
           <div className="avis-header-country">

@@ -497,6 +497,36 @@ export default function AdminDashboardTab() {
   const donationButtonVisible = useSelector(s => s.features?.donationButtonVisible ?? true);
   const [showCountryName, setShowCountryName] = useShowCountryName();
   const [savingFeature, setSavingFeature] = useState(false);
+  const infoMessage = useSelector(s => s.features?.infoMessage ?? null);
+  const [infoText,    setInfoText]    = useState(infoMessage?.message ?? '');
+  const [savingInfo,  setSavingInfo]  = useState(false);
+
+  useEffect(() => {
+    if (infoMessage?.message != null) setInfoText(infoMessage.message);
+  }, [infoMessage?.message]);
+
+  const toggleInfoActive = useCallback(async (value) => {
+    const next = { ...(infoMessage ?? {}), active: value, message: infoText };
+    dispatch({ type: 'FEATURES_LOADED', payload: { infoMessage: next } });
+    setSavingInfo(true);
+    try {
+      const res = await apiClient.put('/api/features/info-message', { active: value, message: infoText });
+      dispatch({ type: 'FEATURES_LOADED', payload: { infoMessage: res.data.infoMessage } });
+    } catch {
+      dispatch({ type: 'FEATURES_LOADED', payload: { infoMessage: { ...(infoMessage ?? {}), active: !value } } });
+    } finally {
+      setSavingInfo(false);
+    }
+  }, [dispatch, infoMessage, infoText]);
+
+  const saveInfoText = useCallback(async () => {
+    setSavingInfo(true);
+    try {
+      const res = await apiClient.put('/api/features/info-message', { active: infoMessage?.active ?? false, message: infoText });
+      dispatch({ type: 'FEATURES_LOADED', payload: { infoMessage: res.data.infoMessage } });
+    } catch {}
+    finally { setSavingInfo(false); }
+  }, [dispatch, infoMessage, infoText]);
 
   const prieresCount   = useSelector(s => s.priereJanaza?.list?.length ?? 0);
   const prevPrieresRef = useRef(prieresCount);
@@ -830,7 +860,7 @@ export default function AdminDashboardTab() {
                 </label>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 18 }}>🏳️</span>
                 <div>
@@ -848,6 +878,72 @@ export default function AdminDashboardTab() {
                 <span style={{ position: 'absolute', inset: 0, background: showCountryName ? '#3A6B4A' : '#d1d5db', borderRadius: 12, transition: 'background 0.2s' }} />
                 <span style={{ position: 'absolute', top: 3, left: showCountryName ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </label>
+            </div>
+            {/* ── Message d'information ──────────────── */}
+            <div style={{ paddingTop: 16, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>📢</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1f2937' }}>Message d'information</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Bandeau visible sur le site et l'app</div>
+                  </div>
+                </div>
+                {savingInfo ? (
+                  <div style={{ width: 40, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 16, height: 16, border: '2px solid #3A6B4A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  </div>
+                ) : (
+                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={infoMessage?.active ?? false}
+                      onChange={e => toggleInfoActive(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{ position: 'absolute', inset: 0, background: infoMessage?.active ? '#3A6B4A' : '#d1d5db', borderRadius: 12, transition: 'background 0.2s' }} />
+                    <span style={{ position: 'absolute', top: 3, left: infoMessage?.active ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  </label>
+                )}
+              </div>
+              <textarea
+                value={infoText}
+                onChange={e => setInfoText(e.target.value)}
+                placeholder="Saisir le message à afficher..."
+                maxLength={500}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1.5px solid #e5e7eb',
+                  fontSize: 13,
+                  color: '#1f2937',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={saveInfoText}
+                disabled={savingInfo}
+                style={{
+                  marginTop: 10,
+                  width: '100%',
+                  padding: '9px 0',
+                  background: '#3A6B4A',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: savingInfo ? 'not-allowed' : 'pointer',
+                  opacity: savingInfo ? 0.6 : 1,
+                }}
+              >
+                Enregistrer
+              </button>
             </div>
           </div>
         </div>

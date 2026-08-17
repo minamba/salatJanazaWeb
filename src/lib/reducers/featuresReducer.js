@@ -1,4 +1,4 @@
-const initialState = { donationButtonVisible: true };
+const initialState = { donationButtonVisible: true, infoMessage: null };
 
 export default function featuresReducer(state = initialState, action) {
   switch (action.type) {
