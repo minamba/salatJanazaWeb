@@ -350,14 +350,17 @@ function MosqueePopup({ items, userPos, lat, lng, currentUserId, currentUserRole
                       )}
                     </div>
                   </div>
-                  {p.commentaire && showCommentaire && (
-                    <div className="mpp-commentaire">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0, marginTop:2}}>
-                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                      </svg>
-                      <span>{p.commentaire}</span>
-                    </div>
-                  )}
+                  {showCommentaire && (() => {
+                    const fc = p.commentaire ? (p.commentaire.includes('|') ? p.commentaire.split('|')[0] : p.commentaire) : '';
+                    return fc ? (
+                      <div className="mpp-commentaire">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0, marginTop:2}}>
+                          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                        </svg>
+                        <span>{fc}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               );
             })}

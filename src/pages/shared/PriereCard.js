@@ -248,6 +248,8 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
     : null;
 
   const itineraireUrl = buildItineraire(priere, userPos);
+  const raw = priere.commentaire ?? '';
+  const infoFamille = raw.includes('|') ? raw.split('|')[0] : raw;
 
   return (
     <div className={`priere-card pc-statut-${statutCls}`}>
@@ -295,8 +297,8 @@ export default function PriereCard({ priere, onDelete, onEdit, userPos }) {
           </span>
         </div>
 
-        {priere.commentaire && commentaireVisibleForLang(isoCode, i18n.language) && (
-          <p className="pc-comment">"{priere.commentaire}"</p>
+        {infoFamille && commentaireVisibleForLang(isoCode, i18n.language) && (
+          <p className="pc-comment">"{infoFamille}"</p>
         )}
       </div>
 

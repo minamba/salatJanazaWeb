@@ -595,6 +595,7 @@ export default function DeclarePriereForm() {
     genre:           'homme',
     dateHeurePriere: '',
     commentaire:     '',
+    infoPriere:      '',
     // avis de décès fields
     nomFamille:      '',
     showYears:       true,
@@ -712,7 +713,7 @@ export default function DeclarePriereForm() {
       estAnonyme:       form.estAnonyme,
       genre:            form.genre || null,
       dateHeurePriere:  form.dateHeurePriere ? prayerDate.toISOString() : null,
-      commentaire:      form.commentaire || null,
+      commentaire:      (form.infoPriere ? `${form.commentaire}|${form.infoPriere}` : form.commentaire) || null,
       paysEnterrement:  form.countryKnown ? (form.paysEnterrement || null) : null,
       villeEnterrement: form.villeEnterrement || null,
       utcOffsetMinutes,
@@ -730,7 +731,7 @@ export default function DeclarePriereForm() {
     anneDeces:        form.anneDeces,
     paysEnterrement:  form.countryKnown ? form.paysEnterrement : '',
     villeEnterrement: form.villeEnterrement,
-    commentaire:      form.commentaire,
+    commentaire:      form.infoPriere ? `${form.commentaire}|${form.infoPriere}` : form.commentaire,
     mosqueeNom:       selectedMosquee?.nom,
     mosqueeAdresse:   selectedMosquee?.adresse,
     dateHeurePriere:  form.dateHeurePriere ? form.dateHeurePriere + 'Z' : undefined,
@@ -953,6 +954,11 @@ export default function DeclarePriereForm() {
             <div style={{ marginTop: '0.75rem' }}>
               <label className="df-label">{t('declare.comment_label')} <span className="df-opt">({t('declare.comment_optional')})</span></label>
               <textarea className="df-input df-textarea" value={form.commentaire} onChange={set('commentaire')} placeholder={t('declare.comment_placeholder')} rows={3} />
+            </div>
+            {/* Informations sur la prière */}
+            <div style={{ marginTop: '0.75rem' }}>
+              <label className="df-label">{t('declare.info_priere_label', 'Informations sur la prière')} <span className="df-opt">({t('declare.comment_optional')})</span></label>
+              <textarea className="df-input df-textarea" value={form.infoPriere} onChange={set('infoPriere')} placeholder={t('declare.info_priere_placeholder', 'ex : La prière est après salat Al Asr')} rows={2} />
             </div>
           </div>
 

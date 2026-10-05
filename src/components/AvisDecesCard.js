@@ -70,10 +70,14 @@ const AvisDecesCard = forwardRef(({ data, previewLang, showCommentaire = true, m
   const {
     genre, nomDefunt, estAnonyme, nomFamille,
     showYears, anneNaissance, anneDeces,
-    paysEnterrement, villeEnterrement, commentaire,
+    paysEnterrement, villeEnterrement, commentaire: rawCommentaire,
     mosqueeNom, mosqueeAdresse,
     dateHeurePriere,
   } = data;
+
+  const commentaireSplitIdx = (rawCommentaire ?? '').indexOf('|');
+  const infoFamille = commentaireSplitIdx >= 0 ? rawCommentaire.slice(0, commentaireSplitIdx) : (rawCommentaire ?? '');
+  const infoPriere  = commentaireSplitIdx >= 0 ? rawCommentaire.slice(commentaireSplitIdx + 1) : '';
 
   const g        = genre?.toLowerCase() ?? '';
   const isF      = g === 'femme';
@@ -146,7 +150,7 @@ const AvisDecesCard = forwardRef(({ data, previewLang, showCommentaire = true, m
           <div className="avis-name">{nomDisplay}</div>
           {sousNom && <div className="avis-sous-nom">{sousNom}</div>}
           {hasYears && <div className="avis-years">{anneNaissance} – {anneDeces}</div>}
-          {commentaire && showCommentaire && <p className="avis-commentaire">{commentaire}</p>}
+          {infoFamille && showCommentaire && <p className="avis-commentaire">{infoFamille}</p>}
         </div>
 
         <div className="avis-sep-line" />
@@ -158,6 +162,7 @@ const AvisDecesCard = forwardRef(({ data, previewLang, showCommentaire = true, m
               {fmtDate(dateHeurePriere, lang)} · {fmtHeure(dateHeurePriere, lang)}
             </div>
           )}
+          {infoPriere && showCommentaire && <p className="avis-info-priere">({infoPriere})</p>}
           {mosqueeNom && (
             <div className="avis-mosque-row">
               <div className="avis-mosque-accent" />

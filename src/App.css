@@ -3888,6 +3888,12 @@ img { max-width: 100%; }
   text-align: center; line-height: 1.5;
   white-space: pre-wrap;
 }
+.avis-info-priere {
+  font-size: 0.82rem; font-style: italic; font-weight: 700;
+  color: #555; margin: 0 0 0.65rem;
+  text-align: center; line-height: 1.5;
+  white-space: pre-wrap;
+}
 .avis-burial-info {
   display: flex; align-items: center; justify-content: center;
   gap: 0.35rem;
@@ -3905,7 +3911,7 @@ img { max-width: 100%; }
 }
 .avis-prayer-datetime {
   font-size: 1.1rem; font-weight: 800;
-  color: #111; margin-bottom: 0.65rem;
+  color: #111; margin-bottom: 0;
 }
 .avis-mosque-row {
   display: flex; align-items: flex-start; gap: 0.5rem;

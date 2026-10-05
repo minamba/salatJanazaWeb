@@ -30,7 +30,8 @@ export function buildInitialForm(priere) {
     noYearInfo:        !(priere.anneeNaissance || priere.anneeDeces),
     anneeNaissance:    priere.anneeNaissance ?? '',
     anneeDeces:        priere.anneeDeces ?? '',
-    commentaire:       priere.commentaire ?? '',
+    commentaire:       priere.commentaire ? priere.commentaire.split('|')[0] : '',
+    infoPriere:        priere.commentaire?.includes('|') ? priere.commentaire.split('|')[1] : '',
     paysEnterrement:   priere.paysEnterrement ?? '',
     countryKnown:      priere.paysEnterrement != null,
     villeEnterrement:  priere.villeEnterrement ?? '',
@@ -53,7 +54,7 @@ export function buildPayload(form) {
     dateHeurePriere:   form.dateHeurePriere ? toUTCISOString(form.dateHeurePriere) : null,
     anneeNaissance:    (!form.noYearInfo && form.anneeNaissance) ? parseInt(form.anneeNaissance) : null,
     anneeDeces:        (!form.noYearInfo && form.anneeDeces) ? parseInt(form.anneeDeces) : null,
-    commentaire:       form.commentaire || null,
+    commentaire:       (form.infoPriere ? `${form.commentaire}|${form.infoPriere}` : form.commentaire) || null,
     paysEnterrement:   form.countryKnown ? (form.paysEnterrement || null) : null,
     villeEnterrement:  form.villeEnterrement || null,
     utcOffsetMinutes,
@@ -271,11 +272,20 @@ export default function EditPriereModal({ priere, form, setForm, onClose, onSubm
               </div>
             )}
             <div className="form-group">
-              <label>Commentaire</label>
+              <label>Informations sur la famille</label>
               <textarea
                 value={form.commentaire}
                 onChange={(e) => setForm((f) => ({ ...f, commentaire: e.target.value }))}
                 rows={3}
+              />
+            </div>
+            <div className="form-group">
+              <label>Informations sur la prière <span style={{ fontWeight: 400, color: '#888', fontSize: '0.85em' }}>(optionnel)</span></label>
+              <textarea
+                value={form.infoPriere}
+                onChange={(e) => setForm((f) => ({ ...f, infoPriere: e.target.value }))}
+                placeholder="ex : La prière est après salat Al Asr"
+                rows={2}
               />
             </div>
             <div className="toggle-row">
